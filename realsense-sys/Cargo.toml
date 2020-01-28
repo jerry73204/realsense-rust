@@ -1,8 +1,13 @@
 [package]
 name = "realsense-sys"
+description = "Use RealSense SDK C library as crate"
 version = "0.1.0"
 authors = ["jerry73204 <jerry73204@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+documentation = "https://docs.rs/realsense-sys/"
+homepage = "https://github.com/jerry73204/realsense-rust"
+repository = "https://github.com/jerry73204/realsense-rust"
 
 [build-dependencies]
 bindgen = "^0.42.1"
