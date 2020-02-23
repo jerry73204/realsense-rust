@@ -44,6 +44,21 @@ fn main() {
 
     let bindings = bindgen::Builder::default()
         .header(include_dir.join("rs.h").to_str().unwrap())
+        .header(
+            include_dir
+                .join("h")
+                .join("rs_pipeline.h")
+                .to_str()
+                .unwrap(),
+        )
+        .header(
+            include_dir
+                .join("h")
+                .join("rs_advanced_mode_command.h")
+                .to_str()
+                .unwrap(),
+        )
+        .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
         .generate()
         .expect("Unable to generate bindings");
 
