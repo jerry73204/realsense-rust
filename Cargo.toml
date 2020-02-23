@@ -10,7 +10,13 @@ homepage = "https://github.com/jerry73204/realsense-rust"
 repository = "https://github.com/jerry73204/realsense-rust"
 
 [dependencies]
-realsense-sys = { version = "^0.1.0", path = "realsense-sys" }
+realsense-sys = { version = "^0.1.1", path = "realsense-sys" }
 num-derive = "^0.3.0"
 num-traits = "^0.2.11"
 nalgebra = "^0.19.0"
+futures = "^0.3.4"
+
+[dev-dependencies]
+tokio = { version  = "0.2.11", features = [] }
+failure = "0.1.6"
+lazy_static = "^1.4.0"

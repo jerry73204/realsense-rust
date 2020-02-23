@@ -1,9 +1,11 @@
 use std::{
+    error::Error as StdError,
     ffi::CStr,
     fmt::{Debug, Display, Formatter, Result as FormatResult},
     ptr::NonNull,
 };
 
+#[derive(Debug)]
 pub(crate) struct ErrorChecker {
     checked: bool,
     ptr: *mut realsense_sys::rs2_error,
@@ -43,6 +45,13 @@ pub struct Error {
 }
 
 impl Error {
+    pub fn error_message(&self) -> &CStr {
+        unsafe {
+            let ptr = realsense_sys::rs2_get_error_message(self.ptr.as_ptr());
+            CStr::from_ptr(ptr)
+        }
+    }
+
     pub(crate) fn from_ptr(ptr: NonNull<realsense_sys::rs2_error>) -> Self {
         Self { ptr }
     }
@@ -50,25 +59,23 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
-        let message = unsafe {
-            let ptr = realsense_sys::rs2_get_error_message(self.ptr.as_ptr());
-            CStr::from_ptr(ptr).to_str().unwrap()
-        };
-
-        write!(formatter, "{}", message)
+        let message = self.error_message().to_str().unwrap();
+        write!(formatter, "RealSense error: {}", message)
     }
 }
 
 impl Debug for Error {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
-        let message = unsafe {
-            let ptr = realsense_sys::rs2_get_error_message(self.ptr.as_ptr());
-            CStr::from_ptr(ptr).to_str().unwrap()
-        };
-
-        write!(formatter, "{}", message)
+        let message = self.error_message().to_str().unwrap();
+        write!(formatter, "RealSense error: {}", message)
     }
 }
+
+impl StdError for Error {}
+
+unsafe impl Send for Error {}
+
+unsafe impl Sync for Error {}
 
 impl Drop for Error {
     fn drop(&mut self) {
