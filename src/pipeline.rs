@@ -5,7 +5,16 @@ use crate::{
     frame::{marker::Composite, Frame},
     pipeline_profile::PipelineProfile,
 };
-use std::{mem::MaybeUninit, os::raw::c_uint, ptr::NonNull, time::Duration};
+use futures::channel::oneshot::{Receiver as OneShotReceiver, Sender as OneShotSender};
+use std::{
+    future::Future,
+    mem::MaybeUninit,
+    os::raw::c_uint,
+    pin::Pin,
+    ptr::NonNull,
+    task::{Context as AsyncContext, Poll},
+    time::Duration,
+};
 
 pub mod marker {
     use super::*;
@@ -98,6 +107,10 @@ impl Pipeline<marker::Inactive> {
 
         Ok(pipeline)
     }
+
+    pub fn start_async(self, config: Option<Config>) -> PipelineStartFuture {
+        PipelineStartFuture::new(config, self)
+    }
 }
 
 impl Pipeline<marker::Active> {
@@ -147,6 +160,10 @@ impl Pipeline<marker::Active> {
         }
     }
 
+    pub fn wait_async(self) -> PipelineRecvFuture {
+        PipelineRecvFuture::new(self)
+    }
+
     pub fn stop(self) -> RsResult<Pipeline<marker::Inactive>> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -194,7 +211,92 @@ where
 
 unsafe impl<State> Send for Pipeline<State> where State: marker::PipelineState {}
 
-// extern "C" fn callback(frame_ptr: *mut realsense_sys::rs2_frame, arg2: *mut c_void) {
-//     let frame = Frame::from_ptr(NonNull::new(frame_ptr).unwrap());
-//     println!("{:?}\t{:?}", frame.number(), frame.timestamp());
-// }
+type PipelineRecvFutureOutput = RsResult<(Pipeline<marker::Active>, Frame<Composite>)>;
+
+#[derive(Debug)]
+pub struct PipelineRecvFuture {
+    pipeline_opt: Option<Pipeline<marker::Active>>,
+    rx_opt: Option<OneShotReceiver<PipelineRecvFutureOutput>>,
+}
+
+impl PipelineRecvFuture {
+    pub(crate) fn new(pipeline: Pipeline<marker::Active>) -> Self {
+        Self {
+            pipeline_opt: Some(pipeline),
+            rx_opt: None,
+        }
+    }
+}
+impl<'a> Future for PipelineRecvFuture {
+    type Output = PipelineRecvFutureOutput;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
+        let self_mut = self.get_mut();
+
+        if let Some(mut pipeline) = self_mut.pipeline_opt.take() {
+            let waker = cx.waker().clone();
+            let (tx, rx) = futures::channel::oneshot::channel();
+            self_mut.rx_opt = Some(rx);
+
+            std::thread::spawn(move || {
+                let result = pipeline.wait(None).map(|frame| (pipeline, frame));
+                if let Ok(()) = tx.send(result) {
+                    waker.wake();
+                }
+            });
+            Poll::Pending
+        } else if let Some(rx) = &mut self_mut.rx_opt {
+            match rx.try_recv().unwrap() {
+                Some(result) => Poll::Ready(result),
+                None => Poll::Pending,
+            }
+        } else {
+            unreachable!();
+        }
+    }
+}
+
+type PipelineStartFutureOutput = RsResult<Pipeline<marker::Active>>;
+
+#[derive(Debug)]
+pub struct PipelineStartFuture {
+    pipeline_opt: Option<(Option<Config>, Pipeline<marker::Inactive>)>,
+    rx_opt: Option<OneShotReceiver<PipelineStartFutureOutput>>,
+}
+
+impl PipelineStartFuture {
+    pub(crate) fn new(config_opt: Option<Config>, pipeline: Pipeline<marker::Inactive>) -> Self {
+        Self {
+            pipeline_opt: Some((config_opt, pipeline)),
+            rx_opt: None,
+        }
+    }
+}
+impl<'a> Future for PipelineStartFuture {
+    type Output = PipelineStartFutureOutput;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
+        let self_mut = self.get_mut();
+
+        if let Some((config_opt, pipeline)) = self_mut.pipeline_opt.take() {
+            let waker = cx.waker().clone();
+            let (tx, rx) = futures::channel::oneshot::channel();
+            self_mut.rx_opt = Some(rx);
+
+            std::thread::spawn(move || {
+                let result = pipeline.start(config_opt);
+                if let Ok(()) = tx.send(result) {
+                    waker.wake();
+                }
+            });
+            Poll::Pending
+        } else if let Some(rx) = &mut self_mut.rx_opt {
+            match rx.try_recv().unwrap() {
+                Some(result) => Poll::Ready(result),
+                None => Poll::Pending,
+            }
+        } else {
+            unreachable!();
+        }
+    }
+}

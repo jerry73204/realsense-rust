@@ -9,16 +9,68 @@ use realsense_rust::{
     pipeline::Pipeline,
 };
 use std::sync::Mutex;
+use tokio::runtime::Runtime;
 
 lazy_static! {
     static ref GLOBAL_MUTEX: Mutex<usize> = Mutex::new(0);
 }
 
 #[test]
-fn depth_image_test() -> RsResult<()> {
+fn async_test() -> RsResult<()> {
+    // lock global mutex
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
-    let context = Context::new()?;
 
+    // init async runtime
+    let mut runtime = Runtime::new().unwrap();
+
+    runtime.block_on(async {
+        // init pipeline
+        let pipeline = Pipeline::new()?;
+        let config = Config::new()?.enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?;
+        let mut pipeline = pipeline.start_async(Some(config)).await?;
+        let profile = pipeline.profile();
+
+        // get stream info
+        let stream = match profile.streams()?.try_into_iter()?.next().transpose()? {
+            Some(stream) => stream,
+            None => return Ok(()),
+        };
+        let stream_data = stream.get_data()?;
+        let resolution = stream.resolution()?;
+        println!("stream data = {:#?}", stream_data);
+        println!("stream resolution = {:#?}", resolution);
+
+        // process frames
+        for _ in 0..100 {
+            let (pipeline_returned, frames) = pipeline.wait_async().await?;
+            pipeline = pipeline_returned;
+
+            println!("frame number = {}", frames.number()?);
+            for frame_result in frames.try_into_iter()? {
+                let composite_frame = frame_result?;
+
+                if let Ok(frame) = composite_frame.try_extend_to::<Depth>()? {
+                    let Resolution { width, height } = resolution;
+                    let distance = frame.get_distance(width / 2, height / 2)?;
+                    println!("distance = {}", distance);
+                }
+            }
+        }
+
+        RsResult::Ok(())
+    })?;
+
+    *counter += 1;
+    Ok(())
+}
+
+#[test]
+fn depth_image_test() -> RsResult<()> {
+    // lock global mutex
+    let mut counter = GLOBAL_MUTEX.lock().unwrap();
+
+    // find the depth unit
+    let context = Context::new()?;
     let depth_unit_opt = context
         .query_devices(None)?
         .try_into_iter()?
@@ -52,11 +104,13 @@ fn depth_image_test() -> RsResult<()> {
     };
     println!("depth unit = {}", depth_unit);
 
+    // init pipeline
     let pipeline = Pipeline::from_context(context)?;
     let config = Config::new()?.enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?;
-    let pipeline = pipeline.start(Some(config))?;
+    let mut pipeline = pipeline.start(Some(config))?;
     let profile = pipeline.profile();
 
+    // get stream info
     let stream = match profile.streams()?.try_into_iter()?.next().transpose()? {
         Some(stream) => stream,
         None => return Ok(()),
@@ -66,6 +120,7 @@ fn depth_image_test() -> RsResult<()> {
     println!("stream data = {:#?}", stream_data);
     println!("stream resolution = {:#?}", resolution);
 
+    // process frames
     for _ in 0..100 {
         let frames = pipeline.wait(None)?;
         println!("frame number = {}", frames.number()?);
