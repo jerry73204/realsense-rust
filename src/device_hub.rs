@@ -12,6 +12,7 @@ pub struct DeviceHub {
 }
 
 impl DeviceHub {
+    /// Block and wait until a device is available.
     pub fn wait_for_device(&self) -> RsResult<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
@@ -25,6 +26,7 @@ impl DeviceHub {
         Ok(device)
     }
 
+    /// Check whether the given device is connected to the device hub.
     pub fn is_device_connected(&self, device: &Device) -> RsResult<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();

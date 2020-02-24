@@ -5,7 +5,7 @@ use crate::{
     frame::{marker::Composite, Frame},
     pipeline_profile::PipelineProfile,
 };
-use futures::channel::oneshot::{Receiver as OneShotReceiver, Sender as OneShotSender};
+use futures::channel::oneshot::Receiver as OneShotReceiver;
 use std::{
     future::Future,
     mem::MaybeUninit,
@@ -16,11 +16,14 @@ use std::{
     time::Duration,
 };
 
+/// Marker traits and types for [Pipeline].
 pub mod marker {
     use super::*;
 
+    /// Marker trait for pipeline marker types.
     pub trait PipelineState {}
 
+    /// A marker type indicating the [Pipeline] is started.
     #[derive(Debug)]
     pub struct Active {
         pub profile: PipelineProfile,
@@ -29,12 +32,14 @@ pub mod marker {
 
     impl PipelineState for Active {}
 
+    /// A marker type indicating the [Pipeline] is stopped.
     #[derive(Debug)]
     pub struct Inactive;
 
     impl PipelineState for Inactive {}
 }
 
+/// Represents the data pipeline from a RealSense device.
 #[derive(Debug)]
 pub struct Pipeline<State>
 where
@@ -46,12 +51,14 @@ where
 }
 
 impl Pipeline<marker::Inactive> {
+    /// Creates an instance.
     pub fn new() -> RsResult<Self> {
         let context = Context::new()?;
         let pipeline = Self::from_context(context)?;
         Ok(pipeline)
     }
 
+    /// Consumes a context and creates an instance.
     pub fn from_context(context: Context) -> RsResult<Self> {
         let ptr = {
             let mut checker = ErrorChecker::new();
@@ -70,6 +77,9 @@ impl Pipeline<marker::Inactive> {
         Ok(pipeline)
     }
 
+    /// Start the pipeline with optional config.
+    ///
+    /// The method consumes inactive pipeline itself, and returns the started pipeine.
     pub fn start(self, config: Option<Config>) -> RsResult<Pipeline<marker::Active>> {
         let ptr = match &config {
             Some(conf) => unsafe {
@@ -108,16 +118,19 @@ impl Pipeline<marker::Inactive> {
         Ok(pipeline)
     }
 
+    /// Start the pipeline asynchronously. It is analogous to [Pipeline::start].
     pub fn start_async(self, config: Option<Config>) -> PipelineStartFuture {
         PipelineStartFuture::new(config, self)
     }
 }
 
 impl Pipeline<marker::Active> {
+    /// Gets the profile of pipeline.
     pub fn profile(&self) -> &PipelineProfile {
         &self.state.profile
     }
 
+    /// Block and wait for next frame.
     pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
@@ -137,6 +150,10 @@ impl Pipeline<marker::Active> {
         Ok(frame)
     }
 
+    /// Poll if next frame is immediately available.
+    ///
+    /// Unlike [Pipeline::start], the method does not block and returns None
+    /// if next from is not available.
     pub fn try_wait(&mut self) -> RsResult<Option<Frame<Composite>>> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -160,10 +177,14 @@ impl Pipeline<marker::Active> {
         }
     }
 
-    pub fn wait_async(self) -> PipelineRecvFuture {
-        PipelineRecvFuture::new(self)
+    /// Wait for frame asynchronously. It is analogous to [Pipeline::wait]
+    pub fn wait_async(self) -> PipelineWaitFuture {
+        PipelineWaitFuture::new(self)
     }
 
+    /// Stop the pipeline.
+    ///
+    /// This method consumes the pipeline instance and returns pipeline markered inactive.
     pub fn stop(self) -> RsResult<Pipeline<marker::Inactive>> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -211,15 +232,16 @@ where
 
 unsafe impl<State> Send for Pipeline<State> where State: marker::PipelineState {}
 
-type PipelineRecvFutureOutput = RsResult<(Pipeline<marker::Active>, Frame<Composite>)>;
+type PipelineWaitFutureOutput = RsResult<(Pipeline<marker::Active>, Frame<Composite>)>;
 
+/// Future type returned by [wait_async()](Pipeline::wait_async).
 #[derive(Debug)]
-pub struct PipelineRecvFuture {
+pub struct PipelineWaitFuture {
     pipeline_opt: Option<Pipeline<marker::Active>>,
-    rx_opt: Option<OneShotReceiver<PipelineRecvFutureOutput>>,
+    rx_opt: Option<OneShotReceiver<PipelineWaitFutureOutput>>,
 }
 
-impl PipelineRecvFuture {
+impl PipelineWaitFuture {
     pub(crate) fn new(pipeline: Pipeline<marker::Active>) -> Self {
         Self {
             pipeline_opt: Some(pipeline),
@@ -227,8 +249,9 @@ impl PipelineRecvFuture {
         }
     }
 }
-impl<'a> Future for PipelineRecvFuture {
-    type Output = PipelineRecvFutureOutput;
+
+impl<'a> Future for PipelineWaitFuture {
+    type Output = PipelineWaitFutureOutput;
 
     fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
         let self_mut = self.get_mut();
@@ -258,6 +281,7 @@ impl<'a> Future for PipelineRecvFuture {
 
 type PipelineStartFutureOutput = RsResult<Pipeline<marker::Active>>;
 
+/// Future type returned by [start_async()](Pipeline::start_async).
 #[derive(Debug)]
 pub struct PipelineStartFuture {
     pipeline_opt: Option<(Option<Config>, Pipeline<marker::Inactive>)>,

@@ -5,12 +5,14 @@ use crate::{
 };
 use std::{ffi::CStr, ptr::NonNull};
 
+/// Represents a device instance.
 #[derive(Debug)]
 pub struct Device {
     pub(crate) ptr: NonNull<realsense_sys::rs2_device>,
 }
 
 impl Device {
+    /// Discover available sensors on device.
     pub fn query_sensors(&self) -> RsResult<SensorList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();

@@ -15,6 +15,7 @@ use std::{
 
 type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U3>>;
 
+/// Marker types and traits for [Frame].
 pub mod marker {
     use super::*;
 
@@ -102,6 +103,7 @@ impl<Kind> Frame<Kind>
 where
     Kind: marker::FrameKind,
 {
+    /// Obtains the metadata of frame.
     pub fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -115,6 +117,7 @@ where
         }
     }
 
+    /// Gets frame number.
     pub fn number(&self) -> RsResult<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -125,6 +128,7 @@ where
         }
     }
 
+    /// Gets raw data size in bytes.
     pub fn data_size(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -159,6 +163,7 @@ where
         Ok(domain)
     }
 
+    /// Gets raw data bytes in frame.
     pub fn data(&self) -> RsResult<&[u8]> {
         let size = self.data_size()?;
         let slice = unsafe {
@@ -170,6 +175,7 @@ where
         Ok(slice)
     }
 
+    /// Gets the relating sensor instance.
     pub fn sensor(&self) -> RsResult<Sensor<sensor_marker::Any>> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
@@ -181,6 +187,7 @@ where
         Ok(sensor)
     }
 
+    /// Gets the relating stream profile.
     pub fn stream_profile(&self) -> RsResult<StreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
@@ -238,6 +245,7 @@ impl Frame<marker::Any> {
 }
 
 impl Frame<marker::Composite> {
+    /// Gets the number of frames included in the composite frame.
     pub fn len(&self) -> RsResult<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
@@ -251,6 +259,9 @@ impl Frame<marker::Composite> {
         Ok(len)
     }
 
+    /// Gets the frame in frameset by index.
+    ///
+    /// The method throws error if index is out of bound given by [Frame::len].
     pub fn get(&self, index: usize) -> RsResult<Option<Frame<marker::Any>>> {
         let len = self.len()?;
         if index >= len {
@@ -270,6 +281,7 @@ impl Frame<marker::Composite> {
         Ok(Some(frame))
     }
 
+    /// Unpacks the set of frames and turns into iterable [CompositeFrameIntoIter] instance.
     pub fn try_into_iter(self) -> RsResult<CompositeFrameIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
@@ -284,6 +296,7 @@ impl Frame<marker::Composite> {
 }
 
 impl Frame<marker::Depth> {
+    /// Gets distance at given coordinates.
     pub fn get_distance(&self, x: usize, y: usize) -> RsResult<f32> {
         let distance = unsafe {
             let mut checker = ErrorChecker::new();
@@ -301,6 +314,7 @@ impl Frame<marker::Depth> {
 }
 
 impl Frame<marker::Video> {
+    /// Gets image resolution.
     pub fn resolution(&self) -> RsResult<Resolution> {
         let width = self.width()?;
         let height = self.width()?;
@@ -308,6 +322,7 @@ impl Frame<marker::Video> {
         Ok(resolution)
     }
 
+    /// Gets image width in pixels.
     pub fn width(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -318,6 +333,7 @@ impl Frame<marker::Video> {
         }
     }
 
+    /// Gets image height in pixels.
     pub fn height(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -328,6 +344,7 @@ impl Frame<marker::Video> {
         }
     }
 
+    /// Gets image row stride in bytes.
     pub fn stride_in_bytes(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -340,6 +357,7 @@ impl Frame<marker::Video> {
         }
     }
 
+    /// Gets the size of pixel in bits.
     pub fn bits_per_pixel(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -354,6 +372,7 @@ impl Frame<marker::Video> {
 }
 
 impl Frame<marker::Pose> {
+    /// Gets the pose data.
     pub fn pose(&self) -> RsResult<PoseData> {
         let pose_data = unsafe {
             let mut checker = ErrorChecker::new();
@@ -387,6 +406,7 @@ impl Frame<marker::Disparity> {
 }
 
 impl Frame<marker::Points> {
+    /// Gets vertices of point cloud.
     pub fn vertices<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_vertex]> {
         let n_points = self.points_count()?;
         unsafe {
@@ -399,6 +419,7 @@ impl Frame<marker::Points> {
         }
     }
 
+    /// Gets texture coordinates of each point of point cloud.
     pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_pixel]> {
         unsafe {
             let n_points = self.points_count()?;
@@ -413,6 +434,7 @@ impl Frame<marker::Points> {
         }
     }
 
+    /// Gets number of points in frame.
     pub fn points_count(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -427,6 +449,7 @@ impl Frame<marker::Points> {
 }
 
 impl Frame<marker::Motion> {
+    /// Gets motion data.
     pub fn get_motion_data(&self) -> RsResult<MotionData> {
         let data = unsafe {
             let data: &[f32] = std::mem::transmute(self.data()?);

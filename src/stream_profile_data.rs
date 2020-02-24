@@ -1,5 +1,6 @@
 use crate::kind::{Format, StreamKind};
 
+/// Represents the specification of a stream.
 #[derive(Debug)]
 pub struct StreamProfileData {
     pub stream: StreamKind,

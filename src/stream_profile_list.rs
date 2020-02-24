@@ -4,12 +4,16 @@ use crate::{
 };
 use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
 
+/// An iterable list of streams.
 #[derive(Debug)]
 pub struct StreamProfileList {
     ptr: NonNull<realsense_sys::rs2_stream_profile_list>,
 }
 
 impl StreamProfileList {
+    /// Gets the stream profile at given index.
+    ///
+    /// The method returns error if the index is out of bound given by [StreamProfileList::len].
     pub fn get(&mut self, index: usize) -> RsResult<StreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
@@ -24,6 +28,7 @@ impl StreamProfileList {
         Ok(profile)
     }
 
+    /// Gets the length of list.
     pub fn len(&mut self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -36,6 +41,7 @@ impl StreamProfileList {
         }
     }
 
+    /// Turns into iterable [StreamProfileListIntoIter] instance.
     pub fn try_into_iter(mut self) -> RsResult<StreamProfileListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };

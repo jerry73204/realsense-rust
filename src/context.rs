@@ -15,6 +15,7 @@ pub struct Context {
 }
 
 impl Context {
+    /// Create an instance.
     pub fn new() -> RsResult<Self> {
         let ptr = {
             let mut checker = ErrorChecker::new();
@@ -35,6 +36,7 @@ impl Context {
         Ok(context)
     }
 
+    /// Create an [DeviceHub](DeviceHub) instance.
     pub fn create_device_hub(&self) -> RsResult<DeviceHub> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
@@ -50,6 +52,7 @@ impl Context {
         Ok(hub)
     }
 
+    /// Discover available devices.
     pub fn query_devices(&self, product_mask: Option<c_int>) -> RsResult<DeviceList> {
         let list = match product_mask {
             Some(mask) => unsafe {
@@ -74,6 +77,7 @@ impl Context {
         Ok(list)
     }
 
+    /// Add device file to context.
     pub fn add_device<P>(&mut self, file: P) -> RsResult<()>
     where
         P: AsRef<Path>,
@@ -91,12 +95,13 @@ impl Context {
         Ok(())
     }
 
-    pub fn remove_device<P>(&mut self, file: P) -> RsResult<()>
-    where
-        P: AsRef<Path>,
-    {
-        todo!();
-    }
+    // /// Remove device file from context. (unimplemented)
+    // pub fn remove_device<P>(&mut self, file: P) -> RsResult<()>
+    // where
+    //     P: AsRef<Path>,
+    // {
+    //     todo!();
+    // }
 }
 
 impl Drop for Context {

@@ -76,6 +76,7 @@ pub mod marker {
     }
 }
 
+/// Represents a sensor on device.
 #[derive(Debug)]
 pub struct Sensor<Kind>
 where
@@ -89,6 +90,7 @@ impl<Kind> Sensor<Kind>
 where
     Kind: marker::SensorKind,
 {
+    /// Gets the corresponding device for sensor.
     pub fn device(&self) -> RsResult<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
@@ -102,6 +104,7 @@ where
         Ok(device)
     }
 
+    /// Try to change the type of sensor.
     pub fn try_extend_to<NewKind>(self) -> RsResult<Result<Sensor<NewKind>, Self>>
     where
         NewKind: marker::NonAnySensorKind,
@@ -131,6 +134,9 @@ where
         }
     }
 
+    /// Gets an attribute on sensor.
+    ///
+    /// It will return error if the attribute is not available on sensor.
     pub fn get_option(&self, option: Rs2Option) -> RsResult<Option<f32>> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -170,6 +176,7 @@ where
     //     Ok(())
     // }
 
+    /// List stream profiles on sensor.
     pub fn stream_profiles(&self) -> RsResult<StreamProfileList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
@@ -290,6 +297,7 @@ where
 }
 
 impl Sensor<marker::Depth> {
+    /// Gets the depth units of depth sensor.
     pub fn depth_units(&self) -> RsResult<f32> {
         self.get_option(Rs2Option::DepthUnits).transpose().unwrap()
     }

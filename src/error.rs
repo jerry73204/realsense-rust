@@ -40,6 +40,7 @@ impl Drop for ErrorChecker {
     }
 }
 
+/// The error type wraps around underlying error thrown by librealsense library.
 pub struct Error {
     ptr: NonNull<realsense_sys::rs2_error>,
 }
@@ -85,4 +86,5 @@ impl Drop for Error {
     }
 }
 
+/// A convenient alias Result type.
 pub type Result<T> = std::result::Result<T, Error>;

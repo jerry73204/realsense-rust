@@ -15,6 +15,7 @@ pub struct StreamProfile {
 }
 
 impl StreamProfile {
+    /// Check whether the profile is default or not.
     pub fn is_default(&self) -> RsResult<bool> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -27,6 +28,7 @@ impl StreamProfile {
         }
     }
 
+    /// Gets the resolution of stream.
     pub fn resolution(&self) -> RsResult<Resolution> {
         let mut width = MaybeUninit::uninit();
         let mut height = MaybeUninit::uninit();
@@ -48,7 +50,8 @@ impl StreamProfile {
         Ok(resolution)
     }
 
-    pub fn extend(&mut self, extension: Extension) -> RsResult<()> {
+    /// Check if the stream is extendable to the given extension.
+    pub fn is_extendable_to(&mut self, extension: Extension) -> RsResult<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_stream_profile_is(
@@ -61,6 +64,7 @@ impl StreamProfile {
         Ok(())
     }
 
+    /// Gets the attributes of stream.
     pub fn get_data(&self) -> RsResult<StreamProfileData> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -92,10 +96,12 @@ impl StreamProfile {
         }
     }
 
-    pub fn set_data(&mut self) {
-        todo!();
-    }
+    /// Sets the attributes of stream.
+    // pub fn set_data(&mut self) {
+    //     todo!();
+    // }
 
+    /// Compute the extrinsic parameters to another stream.
     pub fn extrinsics_to<P>(&self, other: P) -> RsResult<Isometry3<f32>>
     where
         P: Borrow<StreamProfile>,

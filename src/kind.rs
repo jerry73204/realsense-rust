@@ -1,3 +1,4 @@
+/// Collection of enum types.
 use num_derive::FromPrimitive;
 use std::ffi::CStr;
 

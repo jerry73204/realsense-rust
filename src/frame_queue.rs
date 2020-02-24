@@ -17,6 +17,7 @@ pub struct FrameQueue {
 }
 
 impl FrameQueue {
+    /// Creates an instance with given capacity.
     pub fn with_capacity(capacity: usize) -> RsResult<Self> {
         let queue = unsafe {
             let mut checker = ErrorChecker::new();
@@ -28,6 +29,7 @@ impl FrameQueue {
         Ok(queue)
     }
 
+    /// Push a frame to the queue.
     pub fn push<Kind>(&mut self, frame: Frame<Kind>)
     where
         Kind: FrameKind,
@@ -40,6 +42,9 @@ impl FrameQueue {
         }
     }
 
+    /// Pops a frame from queue.
+    ///
+    /// The method blocks until a frame is available.
     pub fn wait(&mut self, timeout: Duration) -> RsResult<Frame<Any>> {
         let frame = unsafe {
             let mut checker = ErrorChecker::new();
@@ -54,6 +59,7 @@ impl FrameQueue {
         Ok(frame)
     }
 
+    /// Try to pop a frame and returns immediately.
     pub fn try_wait(&mut self) -> RsResult<Option<Frame<Any>>> {
         unsafe {
             let mut checker = ErrorChecker::new();

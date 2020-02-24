@@ -4,12 +4,16 @@ use crate::{
 };
 use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
 
+/// An iterable list of sensors.
 #[derive(Debug)]
 pub struct SensorList {
     ptr: NonNull<realsense_sys::rs2_sensor_list>,
 }
 
 impl SensorList {
+    /// Gets the sensor instance at given index.
+    ///
+    /// It returns error if index is out of bound given by [SensorList::len].
     pub fn get(&mut self, index: usize) -> RsResult<Self> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
@@ -24,6 +28,7 @@ impl SensorList {
         Ok(sensor)
     }
 
+    /// Gets the number of sensors in list.
     pub fn len(&mut self) -> RsResult<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
@@ -35,6 +40,7 @@ impl SensorList {
         Ok(len as usize)
     }
 
+    /// Turns into [SensorListIntoIter] iterable type.
     pub fn try_into_iter(mut self) -> RsResult<SensorListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };

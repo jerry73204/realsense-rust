@@ -4,6 +4,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+/// Represents a pose detected by sensor.
 #[derive(Debug)]
 pub struct PoseData(pub realsense_sys::rs2_pose);
 

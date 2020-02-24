@@ -1,15 +1,19 @@
+//! Configuration type for [Pipeline](crate::pipeline::Pipeline).
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     kind::{Format, StreamKind},
 };
 use std::{os::raw::c_int, ptr::NonNull};
 
+/// The pipeline configuration that will be consumed by [Pipeline::start()](crate::pipeline::Pipeline::start).
 #[derive(Debug)]
 pub struct Config {
     pub(crate) ptr: NonNull<realsense_sys::rs2_config>,
 }
 
 impl Config {
+    /// Create an instance.
     pub fn new() -> RsResult<Self> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
@@ -23,6 +27,7 @@ impl Config {
         Ok(config)
     }
 
+    /// Enable data stream with given attributes.
     pub fn enable_stream(
         self,
         stream: StreamKind,

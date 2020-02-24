@@ -4,12 +4,16 @@ use crate::{
 };
 use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
 
+/// An iterable list of devices.
 #[derive(Debug)]
 pub struct DeviceList {
     ptr: NonNull<realsense_sys::rs2_device_list>,
 }
 
 impl DeviceList {
+    /// Gets the device at given index.
+    ///
+    /// The method returns error if index is out of bound given by [DeviceList::len].
     pub fn get(&self, index: usize) -> RsResult<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
@@ -24,6 +28,7 @@ impl DeviceList {
         Ok(device)
     }
 
+    /// Gets the length of the list.
     pub fn len(&self) -> RsResult<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
@@ -35,6 +40,7 @@ impl DeviceList {
         Ok(len as usize)
     }
 
+    /// Turns into [DeviceListIntoIter] instance that implements [IntoIterator] trait.
     pub fn try_into_iter(self) -> RsResult<DeviceListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };

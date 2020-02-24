@@ -11,6 +11,7 @@ pub struct PipelineProfile {
 }
 
 impl PipelineProfile {
+    /// Gets corresponding device of pipeline.
     pub fn device(&self) -> RsResult<Device> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
@@ -26,6 +27,7 @@ impl PipelineProfile {
         Ok(device)
     }
 
+    /// Gets iterable list of streams of pipeline.
     pub fn streams(&self) -> RsResult<StreamProfileList> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
