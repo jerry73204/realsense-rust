@@ -8,7 +8,14 @@ The project is still under development and production use should be avoided.
 
 ## Usage
 
-The crate is not published to crates.io yet. Add the following to your `Cargo.toml` if you really want this fancy new, bleeding edge and unstable library.
+Add the following in `Cargo.toml` to use this crate in your project.
+
+```toml
+[dependencies]
+realsense-rust = "^0.1.1"
+```
+
+The project is under heavy development. If you really want this fancy new, bleeding edge and up-to-date features, use git repo as your dependency.
 
 ```toml
 [dependencies]
@@ -19,7 +26,7 @@ realsense-rust = { git = "https://github.com/jerry73204/realsense-rust.git" }
 
 The project uses bindgen to generate bindings from pure C API, no C++ parts included. All low-level C types and function are gathered in `realsense-sys` crate.
 
-We suggest to follow these steps check out C functions. Their names should be self-explanatory. Also, we suggest C/C++ examples on official [librealsense](https://github.com/IntelRealSense/librealsense) repository.
+We suggest to follow these steps check out C functions. Their names should be self-explanatory. We also suggest C/C++ examples on official [librealsense](https://github.com/IntelRealSense/librealsense) repository to understand actual usage.
 
 ```sh
 cd $repo
