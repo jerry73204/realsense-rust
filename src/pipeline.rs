@@ -75,12 +75,6 @@ impl Pipeline<marker::Inactive> {
             },
             None => unsafe {
                 let mut checker = ErrorChecker::new();
-                // let ptr = realsense_sys::rs2_pipeline_start_with_callback(
-                //     self.ptr.as_ptr(),
-                //     Some(callback),
-                //     std::ptr::null_mut(),
-                //     checker.inner_mut_ptr(),
-                // );
                 let ptr =
                     realsense_sys::rs2_pipeline_start(self.ptr.as_ptr(), checker.inner_mut_ptr());
                 checker.check()?;
@@ -111,7 +105,7 @@ impl Pipeline<marker::Active> {
         &self.state.profile
     }
 
-    pub fn wait(&self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
+    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
             .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
@@ -130,7 +124,7 @@ impl Pipeline<marker::Active> {
         Ok(frame)
     }
 
-    pub fn try_wait(&self) -> RsResult<Option<Frame<Composite>>> {
+    pub fn try_wait(&mut self) -> RsResult<Option<Frame<Composite>>> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut ptr: *mut realsense_sys::rs2_frame = std::ptr::null_mut();
@@ -186,19 +180,6 @@ where
         (ptr, context)
     }
 }
-
-// impl Future for Pipeline<marker::Active> {
-//     type Output = RsResult<Frame>;
-
-//     fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
-//         let waker = cx.waker();
-
-//         std::thread::spawn(move || {
-//             let result = self.wait();
-//             waker.wake();
-//         });
-//     }
-// }
 
 impl<State> Drop for Pipeline<State>
 where

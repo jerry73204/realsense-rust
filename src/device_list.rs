@@ -42,7 +42,7 @@ impl DeviceList {
             index: 0,
             len,
             ptr,
-            fused: false,
+            fused: len == 0,
         };
         Ok(iter)
     }

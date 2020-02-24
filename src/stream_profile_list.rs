@@ -43,7 +43,7 @@ impl StreamProfileList {
             len,
             index: 0,
             ptr,
-            fused: false,
+            fused: len == 0,
         };
         Ok(iter)
     }

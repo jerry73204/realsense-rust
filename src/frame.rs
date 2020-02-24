@@ -13,7 +13,7 @@ use std::{
     ptr::NonNull,
 };
 
-type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U1>>;
+type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U3>>;
 
 pub mod marker {
     use super::*;
@@ -277,7 +277,7 @@ impl Frame<marker::Composite> {
             index: 0,
             len,
             ptr,
-            fused: false,
+            fused: len == 0,
         };
         Ok(iter)
     }
@@ -430,7 +430,7 @@ impl Frame<marker::Motion> {
     pub fn get_motion_data(&self) -> RsResult<MotionData> {
         let data = unsafe {
             let data: &[f32] = std::mem::transmute(self.data()?);
-            let storage = SliceStorage::from_raw_parts(data.as_ptr(), (U3, U1), (U1, U1));
+            let storage = SliceStorage::from_raw_parts(data.as_ptr(), (U3, U1), (U1, U3));
             MotionData::from_data(storage)
         };
         Ok(data)
