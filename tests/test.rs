@@ -1,12 +1,12 @@
 use failure::Fallible;
-use image::ImageFormat;
+use image::{DynamicImage, ImageFormat};
 use lazy_static::lazy_static;
 use realsense_rust::{
     base::Resolution,
     config::Config,
     context::Context,
     error::Result as RsResult,
-    frame::marker::Depth,
+    frame::marker::{Depth, Video},
     kind::{Format, StreamKind},
     pipeline::Pipeline,
     sensor::marker as sensor_marker,
@@ -30,7 +30,9 @@ fn async_test() -> Fallible<()> {
     runtime.block_on(async {
         // init pipeline
         let pipeline = Pipeline::new()?;
-        let config = Config::new()?.enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?;
+        let config = Config::new()?
+            .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
+            .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
         let mut pipeline = pipeline.start_async(Some(config)).await?;
         let profile = pipeline.profile();
 
@@ -47,19 +49,36 @@ fn async_test() -> Fallible<()> {
 
             println!("frame number = {}", frames.number()?);
             for frame_result in frames.try_into_iter()? {
-                let composite_frame = frame_result?;
+                let frame_any = frame_result?;
 
-                if let Ok(frame) = composite_frame.try_extend_to::<Depth>()? {
-                    let Resolution { width, height } = frame.resolution()?;
-                    let distance = frame.distance(width / 2, height / 2)?;
-                    println!("distance = {}", distance);
+                let frame_any = match frame_any.try_extend_to::<Depth>()? {
+                    Ok(frame) => {
+                        let Resolution { width, height } = frame.resolution()?;
+                        let distance = frame.distance(width / 2, height / 2)?;
+                        println!("distance = {}", distance);
 
-                    let image = frame.depth_image()?;
-                    image.save_with_format(
-                        format!("depth-example-{}.png", frame.number()?),
-                        ImageFormat::Png,
-                    )?;
-                }
+                        let image = frame.depth_image()?;
+                        image.save_with_format(
+                            format!("depth-example-{}.png", frame.number()?),
+                            ImageFormat::Png,
+                        )?;
+                        continue;
+                    }
+                    Err(frame) => frame,
+                };
+
+                let _frame_any = match frame_any.try_extend_to::<Video>()? {
+                    Ok(frame) => {
+                        let image: DynamicImage = frame.color_image()?.into();
+
+                        image.save_with_format(
+                            format!("video-example-{}.png", frame.number()?),
+                            ImageFormat::Png,
+                        )?;
+                        continue;
+                    }
+                    Err(frame) => frame,
+                };
             }
         }
 
@@ -71,7 +90,7 @@ fn async_test() -> Fallible<()> {
 }
 
 #[test]
-fn depth_image_test() -> RsResult<()> {
+fn sync_test() -> Fallible<()> {
     // lock global mutex
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
 
@@ -112,7 +131,9 @@ fn depth_image_test() -> RsResult<()> {
 
     // init pipeline
     let pipeline = Pipeline::from_context(context)?;
-    let config = Config::new()?.enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?;
+    let config = Config::new()?
+        .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
+        .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
     let mut pipeline = pipeline.start(Some(config))?;
     let profile = pipeline.profile();
 
@@ -123,17 +144,41 @@ fn depth_image_test() -> RsResult<()> {
     }
 
     // process frames
-    for _ in 0..100 {
+    for _ in 0..16 {
         let frames = pipeline.wait(None)?;
+
         println!("frame number = {}", frames.number()?);
         for frame_result in frames.try_into_iter()? {
-            let composite_frame = frame_result?;
+            let frame_any = frame_result?;
 
-            if let Ok(frame) = composite_frame.try_extend_to::<Depth>()? {
-                let Resolution { width, height } = frame.resolution()?;
-                let distance = frame.distance(width / 2, height / 2)?;
-                println!("distance = {}", distance);
-            }
+            let frame_any = match frame_any.try_extend_to::<Depth>()? {
+                Ok(frame) => {
+                    let Resolution { width, height } = frame.resolution()?;
+                    let distance = frame.distance(width / 2, height / 2)?;
+                    println!("distance = {}", distance);
+
+                    let image = frame.depth_image()?;
+                    image.save_with_format(
+                        format!("depth-example-{}.png", frame.number()?),
+                        ImageFormat::Png,
+                    )?;
+                    continue;
+                }
+                Err(frame) => frame,
+            };
+
+            let _frame_any = match frame_any.try_extend_to::<Video>()? {
+                Ok(frame) => {
+                    let image: DynamicImage = frame.color_image()?.into();
+
+                    image.save_with_format(
+                        format!("video-example-{}.png", frame.number()?),
+                        ImageFormat::Png,
+                    )?;
+                    continue;
+                }
+                Err(frame) => frame,
+            };
         }
     }
 

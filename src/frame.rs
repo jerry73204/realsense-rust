@@ -1,5 +1,5 @@
 use crate::{
-    base::Resolution,
+    base::{ColorImage, Resolution},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     pose_data::PoseData,
@@ -9,7 +9,7 @@ use crate::{
 };
 use image::{
     flat::{FlatSamples, SampleLayout},
-    ColorType, DynamicImage, ImageBuffer, Luma,
+    ColorType, ImageBuffer, Luma,
 };
 use nalgebra::{SliceStorage, Vector, U1, U3};
 use num_traits::FromPrimitive;
@@ -389,11 +389,19 @@ impl Frame<marker::Depth> {
 
         let image = match format {
             Format::Z16 => {
+                let sample_size = std::mem::size_of::<u16>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
                 let depth_data: &[u16] =
                     safe_transmute::transmute_many::<u16, PedanticGuard>(raw_data).unwrap();
-                let sample_size = std::mem::size_of::<u16>();
-                debug_assert_eq!(depth_data.len(), width * height, "please report bug");
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    depth_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width <= stride_in_samples, "please report bug");
 
                 let flat = FlatSamples {
                     samples: depth_data,
@@ -417,7 +425,143 @@ impl Frame<marker::Depth> {
     }
 }
 
-impl Frame<marker::Video> {}
+impl Frame<marker::Video> {
+    /// Gets color image buffer referencing underlying raw data.
+    pub fn color_image(&self) -> RsResult<ColorImage> {
+        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
+        let raw_data = self.data()?;
+        let Resolution { width, height } = self.resolution()?;
+        let stride_in_bytes = self.stride_in_bytes()?;
+        debug_assert_eq!(raw_data.len() % stride_in_bytes, 0, "please report bug");
+        debug_assert_eq!(
+            stream,
+            StreamKind::Color,
+            "stream kind mismatched. please report bug"
+        );
+
+        let image = match format {
+            Format::Bgr8 => {
+                let channels = 3;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Bgr8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                ColorImage::Bgr8(image)
+            }
+            Format::Bgra8 => {
+                let channels = 4;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Bgra8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                ColorImage::Bgra8(image)
+            }
+            Format::Rgb8 => {
+                let channels = 3;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Rgb8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                ColorImage::Rgb8(image)
+            }
+            Format::Rgba8 => {
+                let channels = 4;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Rgba8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                ColorImage::Rgba8(image)
+            }
+            _ => unreachable!("unsupported format. please report bug"),
+        };
+
+        Ok(image)
+    }
+}
 
 impl Frame<marker::Pose> {
     /// Gets the pose data.
