@@ -5,13 +5,15 @@ use realsense_rust::{
     context::Context,
     error::Result as RsResult,
     frame::marker::Depth,
-    kind::{Extension, Format, Rs2Option, StreamKind},
+    kind::{Format, StreamKind},
     pipeline::Pipeline,
+    sensor::marker as sensor_marker,
 };
 use std::sync::Mutex;
 use tokio::runtime::Runtime;
 
 lazy_static! {
+    // this lock prevenst multiple tests control RealSense device concurrently
     static ref GLOBAL_MUTEX: Mutex<usize> = Mutex::new(0);
 }
 
@@ -81,11 +83,11 @@ fn depth_image_test() -> RsResult<()> {
                 .try_into_iter()?
                 .map(|sensor_result| {
                     let sensor = sensor_result?;
-                    let depth_unit_opt = if sensor.is_extendable_to(Extension::DepthSensor)? {
-                        sensor.get_option(Rs2Option::DepthUnits)?
-                    } else {
-                        None
-                    };
+                    let depth_unit_opt = sensor
+                        .try_extend_to::<sensor_marker::Depth>()?
+                        .ok()
+                        .map(|depth_sensor| depth_sensor.depth_units())
+                        .transpose()?;
                     Ok(depth_unit_opt)
                 })
                 .flat_map(|result| result.transpose())

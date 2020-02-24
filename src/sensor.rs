@@ -289,6 +289,12 @@ where
     }
 }
 
+impl Sensor<marker::Depth> {
+    pub fn depth_units(&self) -> RsResult<f32> {
+        self.get_option(Rs2Option::DepthUnits).transpose().unwrap()
+    }
+}
+
 unsafe impl<Kind> Send for Sensor<Kind> where Kind: marker::SensorKind {}
 
 impl<Kind> Drop for Sensor<Kind>
