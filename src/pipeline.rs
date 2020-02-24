@@ -135,7 +135,7 @@ impl Pipeline<marker::Active> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
             .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
-        let ptr = unsafe {
+        let frame = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
                 self.ptr.as_ptr(),
@@ -143,10 +143,10 @@ impl Pipeline<marker::Active> {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ptr
+            let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
+            frame
         };
 
-        let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
         Ok(frame)
     }
 

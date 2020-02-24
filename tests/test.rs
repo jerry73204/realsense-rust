@@ -1,3 +1,5 @@
+use failure::Fallible;
+use image::ImageFormat;
 use lazy_static::lazy_static;
 use realsense_rust::{
     base::Resolution,
@@ -18,12 +20,12 @@ lazy_static! {
 }
 
 #[test]
-fn async_test() -> RsResult<()> {
+fn async_test() -> Fallible<()> {
     // lock global mutex
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
 
     // init async runtime
-    let mut runtime = Runtime::new().unwrap();
+    let mut runtime = Runtime::new()?;
 
     runtime.block_on(async {
         // init pipeline
@@ -32,18 +34,14 @@ fn async_test() -> RsResult<()> {
         let mut pipeline = pipeline.start_async(Some(config)).await?;
         let profile = pipeline.profile();
 
-        // get stream info
-        let stream = match profile.streams()?.try_into_iter()?.next().transpose()? {
-            Some(stream) => stream,
-            None => return Ok(()),
-        };
-        let stream_data = stream.get_data()?;
-        let resolution = stream.resolution()?;
-        println!("stream data = {:#?}", stream_data);
-        println!("stream resolution = {:#?}", resolution);
+        // show stream info
+        for (idx, stream_result) in profile.streams()?.try_into_iter()?.enumerate() {
+            let stream = stream_result?;
+            println!("stream data {}: {:#?}", idx, stream.get_data()?);
+        }
 
         // process frames
-        for _ in 0..100 {
+        for _ in 0..16 {
             let (pipeline_returned, frames) = pipeline.wait_async().await?;
             pipeline = pipeline_returned;
 
@@ -52,14 +50,20 @@ fn async_test() -> RsResult<()> {
                 let composite_frame = frame_result?;
 
                 if let Ok(frame) = composite_frame.try_extend_to::<Depth>()? {
-                    let Resolution { width, height } = resolution;
-                    let distance = frame.get_distance(width / 2, height / 2)?;
+                    let Resolution { width, height } = frame.resolution()?;
+                    let distance = frame.distance(width / 2, height / 2)?;
                     println!("distance = {}", distance);
+
+                    let image = frame.depth_image()?;
+                    image.save_with_format(
+                        format!("depth-example-{}.png", frame.number()?),
+                        ImageFormat::Png,
+                    )?;
                 }
             }
         }
 
-        RsResult::Ok(())
+        Fallible::Ok(())
     })?;
 
     *counter += 1;
@@ -112,15 +116,11 @@ fn depth_image_test() -> RsResult<()> {
     let mut pipeline = pipeline.start(Some(config))?;
     let profile = pipeline.profile();
 
-    // get stream info
-    let stream = match profile.streams()?.try_into_iter()?.next().transpose()? {
-        Some(stream) => stream,
-        None => return Ok(()),
-    };
-    let stream_data = stream.get_data()?;
-    let resolution = stream.resolution()?;
-    println!("stream data = {:#?}", stream_data);
-    println!("stream resolution = {:#?}", resolution);
+    // show stream info
+    for (idx, stream_result) in profile.streams()?.try_into_iter()?.enumerate() {
+        let stream = stream_result?;
+        println!("stream data {}: {:#?}", idx, stream.get_data()?);
+    }
 
     // process frames
     for _ in 0..100 {
@@ -130,8 +130,8 @@ fn depth_image_test() -> RsResult<()> {
             let composite_frame = frame_result?;
 
             if let Ok(frame) = composite_frame.try_extend_to::<Depth>()? {
-                let Resolution { width, height } = resolution;
-                let distance = frame.get_distance(width / 2, height / 2)?;
+                let Resolution { width, height } = frame.resolution()?;
+                let distance = frame.distance(width / 2, height / 2)?;
                 println!("distance = {}", distance);
             }
         }

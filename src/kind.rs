@@ -3,7 +3,7 @@ use num_derive::FromPrimitive;
 use std::ffi::CStr;
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rs2Option {
     BacklightCompensation = realsense_sys::rs2_option_RS2_OPTION_BACKLIGHT_COMPENSATION,
     Brightness = realsense_sys::rs2_option_RS2_OPTION_BRIGHTNESS,
@@ -73,7 +73,7 @@ pub enum Rs2Option {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimestampDomain {
     HardwareClock = realsense_sys::rs2_timestamp_domain_RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK,
     SystemTime = realsense_sys::rs2_timestamp_domain_RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME,
@@ -103,7 +103,7 @@ impl ToString for TimestampDomain {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FrameMetaDataValue {
     FrameCounter = realsense_sys::rs2_frame_metadata_value_RS2_FRAME_METADATA_FRAME_COUNTER,
     FrameTimestamp = realsense_sys::rs2_frame_metadata_value_RS2_FRAME_METADATA_FRAME_TIMESTAMP,
@@ -149,7 +149,7 @@ pub enum FrameMetaDataValue {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Extension {
     // sensor
     ColorSensor = realsense_sys::rs2_extension_RS2_EXTENSION_COLOR_SENSOR,
@@ -206,7 +206,7 @@ pub enum Extension {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CameraInfo {
     Name = realsense_sys::rs2_camera_info_RS2_CAMERA_INFO_NAME,
     SerialNumber = realsense_sys::rs2_camera_info_RS2_CAMERA_INFO_SERIAL_NUMBER,
@@ -226,7 +226,7 @@ pub enum CameraInfo {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StreamKind {
     Any = realsense_sys::rs2_stream_RS2_STREAM_ANY,
     Depth = realsense_sys::rs2_stream_RS2_STREAM_DEPTH,
@@ -242,7 +242,7 @@ pub enum StreamKind {
 }
 
 #[repr(u32)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Format {
     Any = realsense_sys::rs2_format_RS2_FORMAT_ANY,
     Yuyv = realsense_sys::rs2_format_RS2_FORMAT_YUYV,

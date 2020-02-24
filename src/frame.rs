@@ -1,19 +1,25 @@
 use crate::{
     base::Resolution,
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, FrameMetaDataValue, TimestampDomain},
+    kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     pose_data::PoseData,
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::StreamProfile,
+    stream_profile_data::StreamProfileData,
 };
-use nalgebra::{base::SliceStorage, Vector, U1, U3};
+use image::{
+    flat::{FlatSamples, SampleLayout},
+    ColorType, DynamicImage, ImageBuffer, Luma,
+};
+use nalgebra::{SliceStorage, Vector, U1, U3};
 use num_traits::FromPrimitive;
+use safe_transmute::guard::PedanticGuard;
 use std::{
     iter::FusedIterator, marker::PhantomData, mem::MaybeUninit, os::raw::c_int, path::Path,
     ptr::NonNull,
 };
 
-type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U3>>;
+pub type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U1>>;
 
 /// Marker types and traits for [Frame].
 pub mod marker {
@@ -175,6 +181,62 @@ where
         Ok(slice)
     }
 
+    /// Gets image resolution.
+    pub fn resolution(&self) -> RsResult<Resolution> {
+        let width = self.width()?;
+        let height = self.height()?;
+        let resolution = Resolution { width, height };
+        Ok(resolution)
+    }
+
+    /// Gets image width in pixels.
+    pub fn width(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val =
+                realsense_sys::rs2_get_frame_width(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets image height in pixels.
+    pub fn height(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val =
+                realsense_sys::rs2_get_frame_height(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets image row stride in bytes.
+    pub fn stride_in_bytes(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_get_frame_stride_in_bytes(
+                self.ptr.as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets the size of pixel in bits.
+    pub fn bits_per_pixel(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_get_frame_bits_per_pixel(
+                self.ptr.as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
     /// Gets the relating sensor instance.
     pub fn sensor(&self) -> RsResult<Sensor<sensor_marker::Any>> {
         let sensor = unsafe {
@@ -207,7 +269,7 @@ where
         ptr
     }
 
-    pub(crate) fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self {
+    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
@@ -297,7 +359,7 @@ impl Frame<marker::Composite> {
 
 impl Frame<marker::Depth> {
     /// Gets distance at given coordinates.
-    pub fn get_distance(&self, x: usize, y: usize) -> RsResult<f32> {
+    pub fn distance(&self, x: usize, y: usize) -> RsResult<f32> {
         let distance = unsafe {
             let mut checker = ErrorChecker::new();
             let distance = realsense_sys::rs2_depth_frame_get_distance(
@@ -311,65 +373,51 @@ impl Frame<marker::Depth> {
         };
         Ok(distance)
     }
-}
 
-impl Frame<marker::Video> {
-    /// Gets image resolution.
-    pub fn resolution(&self) -> RsResult<Resolution> {
-        let width = self.width()?;
-        let height = self.width()?;
-        let resolution = Resolution { width, height };
-        Ok(resolution)
-    }
+    /// Gets depth image buffer referencing underlying raw data.
+    pub fn depth_image(&self) -> RsResult<ImageBuffer<Luma<u16>, &[u16]>> {
+        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
+        let raw_data = self.data()?;
+        let Resolution { width, height } = self.resolution()?;
+        let stride_in_bytes = self.stride_in_bytes()?;
+        debug_assert_eq!(raw_data.len() % stride_in_bytes, 0, "please report bug");
+        debug_assert_eq!(
+            stream,
+            StreamKind::Depth,
+            "stream kind mismatched. please report bug"
+        );
 
-    /// Gets image width in pixels.
-    pub fn width(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_width(self.ptr.as_ptr(), checker.inner_mut_ptr());
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
+        let image = match format {
+            Format::Z16 => {
+                let depth_data: &[u16] =
+                    safe_transmute::transmute_many::<u16, PedanticGuard>(raw_data).unwrap();
+                let sample_size = std::mem::size_of::<u16>();
+                debug_assert_eq!(depth_data.len(), width * height, "please report bug");
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
-    /// Gets image height in pixels.
-    pub fn height(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_height(self.ptr.as_ptr(), checker.inner_mut_ptr());
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
+                let flat = FlatSamples {
+                    samples: depth_data,
+                    layout: SampleLayout {
+                        channels: 1,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: 1,
+                        height_stride: stride_in_bytes / sample_size,
+                    },
+                    color_hint: Some(ColorType::L16),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                image
+            }
+            _ => unreachable!("unsupported format. please report bug"),
+        };
 
-    /// Gets image row stride in bytes.
-    pub fn stride_in_bytes(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_stride_in_bytes(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
-
-    /// Gets the size of pixel in bits.
-    pub fn bits_per_pixel(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_bits_per_pixel(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(val as usize)
-        }
+        Ok(image)
     }
 }
+
+impl Frame<marker::Video> {}
 
 impl Frame<marker::Pose> {
     /// Gets the pose data.
@@ -392,7 +440,7 @@ impl Frame<marker::Pose> {
 }
 
 impl Frame<marker::Disparity> {
-    pub fn get_baseline(&self) -> RsResult<f32> {
+    pub fn baseline(&self) -> RsResult<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
@@ -453,7 +501,7 @@ impl Frame<marker::Motion> {
     pub fn get_motion_data(&self) -> RsResult<MotionData> {
         let data = unsafe {
             let data: &[f32] = std::mem::transmute(self.data()?);
-            let storage = SliceStorage::from_raw_parts(data.as_ptr(), (U3, U1), (U1, U3));
+            let storage = SliceStorage::from_raw_parts(data.as_ptr(), (U3, U1), (U1, U1));
             MotionData::from_data(storage)
         };
         Ok(data)
@@ -519,7 +567,7 @@ impl Iterator for CompositeFrameIntoIter {
             self.fused = true;
         }
 
-        let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
+        let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
         Some(Ok(frame))
     }
 }

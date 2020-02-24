@@ -96,7 +96,7 @@ impl StreamProfile {
         }
     }
 
-    /// Sets the attributes of stream.
+    // /// Sets the attributes of stream.
     // pub fn set_data(&mut self) {
     //     todo!();
     // }
