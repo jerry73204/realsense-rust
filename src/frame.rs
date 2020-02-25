@@ -1,11 +1,9 @@
 use crate::{
-    base::{ColorImage, Resolution},
+    base::{ColorImage, PoseData, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
-    pose_data::PoseData,
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::StreamProfile,
-    stream_profile_data::StreamProfileData,
 };
 use image::{
     flat::{FlatSamples, SampleLayout},

@@ -36,10 +36,10 @@ impl ProcessingBlockList {
         }
     }
 
-    pub fn try_into_iter(mut self) -> RsResult<ProcessingBlockListIter> {
+    pub fn try_into_iter(mut self) -> RsResult<ProcessingBlockListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
-        let iter = ProcessingBlockListIter { len, index: 0, ptr };
+        let iter = ProcessingBlockListIntoIter { len, index: 0, ptr };
         Ok(iter)
     }
 
@@ -56,7 +56,7 @@ impl ProcessingBlockList {
 
 impl IntoIterator for ProcessingBlockList {
     type Item = RsResult<ProcessingBlock<processing_block_marker::Any>>;
-    type IntoIter = ProcessingBlockListIter;
+    type IntoIter = ProcessingBlockListIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
@@ -71,13 +71,13 @@ impl Drop for ProcessingBlockList {
     }
 }
 
-pub struct ProcessingBlockListIter {
+pub struct ProcessingBlockListIntoIter {
     len: usize,
     index: usize,
     ptr: NonNull<realsense_sys::rs2_processing_block_list>,
 }
 
-impl Iterator for ProcessingBlockListIter {
+impl Iterator for ProcessingBlockListIntoIter {
     type Item = RsResult<ProcessingBlock<processing_block_marker::Any>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -102,9 +102,9 @@ impl Iterator for ProcessingBlockListIter {
     }
 }
 
-impl FusedIterator for ProcessingBlockListIter {}
+impl FusedIterator for ProcessingBlockListIntoIter {}
 
-impl Drop for ProcessingBlockListIter {
+impl Drop for ProcessingBlockListIntoIter {
     fn drop(&mut self) {
         unsafe {
             realsense_sys::rs2_delete_recommended_processing_blocks(self.ptr.as_ptr());

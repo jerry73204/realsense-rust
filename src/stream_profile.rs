@@ -1,8 +1,7 @@
 use crate::{
-    base::Resolution,
+    base::{Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, StreamKind},
-    stream_profile_data::StreamProfileData,
 };
 use nalgebra::{Isometry3, MatrixMN, Translation3, UnitQuaternion, U3};
 use num_traits::FromPrimitive;
