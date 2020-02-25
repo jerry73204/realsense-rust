@@ -44,8 +44,7 @@ fn async_test() -> Fallible<()> {
 
         // process frames
         for _ in 0..16 {
-            let (pipeline_returned, frames) = pipeline.wait_async().await?;
-            pipeline = pipeline_returned;
+            let frames = pipeline.wait_async(None).await?;
 
             println!("frame number = {}", frames.number()?);
             for frame_result in frames.try_into_iter()? {

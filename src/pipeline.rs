@@ -5,14 +5,11 @@ use crate::{
     frame::{marker::Composite, Frame},
     pipeline_profile::PipelineProfile,
 };
-use futures::channel::oneshot::Receiver as OneShotReceiver;
 use std::{
-    future::Future,
     mem::MaybeUninit,
     os::raw::c_uint,
-    pin::Pin,
     ptr::NonNull,
-    task::{Context as AsyncContext, Poll},
+    sync::atomic::{AtomicPtr, Ordering},
     time::Duration,
 };
 
@@ -103,15 +100,11 @@ impl Pipeline<marker::Inactive> {
 
         let profile = unsafe { PipelineProfile::from_ptr(NonNull::new(ptr).unwrap()) };
         let pipeline = unsafe {
-            let (ptr, context) = self.take();
+            let (ptr, context, _) = self.take();
             Pipeline {
                 ptr,
                 context,
-                state: marker::Active {
-                    profile,
-                    config,
-                    // polling: Mutex::new(PollingState::None),
-                },
+                state: marker::Active { profile, config },
             }
         };
 
@@ -119,8 +112,57 @@ impl Pipeline<marker::Inactive> {
     }
 
     /// Start the pipeline asynchronously. It is analogous to [Pipeline::start].
-    pub fn start_async(self, config: Option<Config>) -> PipelineStartFuture {
-        PipelineStartFuture::new(config, self)
+    pub async fn start_async(self, config: Option<Config>) -> RsResult<Pipeline<marker::Active>> {
+        let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
+        let config_ptr_opt = config
+            .as_ref()
+            .map(|conf| AtomicPtr::new(conf.ptr.as_ptr()));
+        let (tx, rx) = futures::channel::oneshot::channel();
+
+        // start blocking thread
+        std::thread::spawn(move || {
+            let func = || unsafe {
+                let profile_ptr = match config_ptr_opt {
+                    Some(config_ptr) => {
+                        let mut checker = ErrorChecker::new();
+                        let ptr = realsense_sys::rs2_pipeline_start_with_config(
+                            pipeline_ptr.load(Ordering::SeqCst),
+                            config_ptr.load(Ordering::SeqCst),
+                            checker.inner_mut_ptr(),
+                        );
+                        checker.check()?;
+                        ptr
+                    }
+                    None => {
+                        let mut checker = ErrorChecker::new();
+                        let ptr = realsense_sys::rs2_pipeline_start(
+                            pipeline_ptr.load(Ordering::SeqCst),
+                            checker.inner_mut_ptr(),
+                        );
+                        checker.check()?;
+                        ptr
+                    }
+                };
+                Ok(AtomicPtr::new(profile_ptr))
+            };
+            let result = func();
+            let _ = tx.send(result);
+        });
+
+        let profile_ptr = rx.await.unwrap()?;
+        let profile = unsafe {
+            PipelineProfile::from_ptr(NonNull::new(profile_ptr.load(Ordering::SeqCst)).unwrap())
+        };
+        let pipeline = unsafe {
+            let (ptr, context, _) = self.take();
+            Pipeline {
+                ptr,
+                context,
+                state: marker::Active { profile, config },
+            }
+        };
+
+        Ok(pipeline)
     }
 }
 
@@ -178,8 +220,31 @@ impl Pipeline<marker::Active> {
     }
 
     /// Wait for frame asynchronously. It is analogous to [Pipeline::wait]
-    pub fn wait_async(self) -> PipelineWaitFuture {
-        PipelineWaitFuture::new(self)
+    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
+        let timeout_ms = timeout
+            .map(|duration| duration.as_millis() as c_uint)
+            .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
+
+        std::thread::spawn(move || {
+            let func = || unsafe {
+                let mut checker = ErrorChecker::new();
+                let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
+                    pipeline_ptr.load(Ordering::SeqCst),
+                    timeout_ms,
+                    checker.inner_mut_ptr(),
+                );
+                checker.check()?;
+                let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
+                Ok(frame)
+            };
+            let result = func();
+            let _ = tx.send(result);
+        });
+
+        let frame = rx.await.unwrap()?;
+        Ok(frame)
     }
 
     /// Stop the pipeline.
@@ -193,7 +258,7 @@ impl Pipeline<marker::Active> {
         }
 
         let pipeline = unsafe {
-            let (ptr, context) = self.take();
+            let (ptr, context, _) = self.take();
             Pipeline {
                 ptr,
                 context,
@@ -209,13 +274,14 @@ impl<State> Pipeline<State>
 where
     State: marker::PipelineState,
 {
-    unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_pipeline>, Context) {
+    unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
         // take fields without invoking drop()
         let ptr = std::mem::replace(&mut self.ptr, { MaybeUninit::uninit().assume_init() });
         let context = std::mem::replace(&mut self.context, { MaybeUninit::uninit().assume_init() });
+        let state = std::mem::replace(&mut self.state, { MaybeUninit::uninit().assume_init() });
         std::mem::forget(self);
 
-        (ptr, context)
+        (ptr, context, state)
     }
 }
 
@@ -231,96 +297,3 @@ where
 }
 
 unsafe impl<State> Send for Pipeline<State> where State: marker::PipelineState {}
-
-type PipelineWaitFutureOutput = RsResult<(Pipeline<marker::Active>, Frame<Composite>)>;
-
-/// Future type returned by [wait_async()](Pipeline::wait_async).
-#[derive(Debug)]
-pub struct PipelineWaitFuture {
-    pipeline_opt: Option<Pipeline<marker::Active>>,
-    rx_opt: Option<OneShotReceiver<PipelineWaitFutureOutput>>,
-}
-
-impl PipelineWaitFuture {
-    pub(crate) fn new(pipeline: Pipeline<marker::Active>) -> Self {
-        Self {
-            pipeline_opt: Some(pipeline),
-            rx_opt: None,
-        }
-    }
-}
-
-impl<'a> Future for PipelineWaitFuture {
-    type Output = PipelineWaitFutureOutput;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
-        let self_mut = self.get_mut();
-
-        if let Some(mut pipeline) = self_mut.pipeline_opt.take() {
-            let waker = cx.waker().clone();
-            let (tx, rx) = futures::channel::oneshot::channel();
-            self_mut.rx_opt = Some(rx);
-
-            std::thread::spawn(move || {
-                let result = pipeline.wait(None).map(|frame| (pipeline, frame));
-                if let Ok(()) = tx.send(result) {
-                    waker.wake();
-                }
-            });
-            Poll::Pending
-        } else if let Some(rx) = &mut self_mut.rx_opt {
-            match rx.try_recv().unwrap() {
-                Some(result) => Poll::Ready(result),
-                None => Poll::Pending,
-            }
-        } else {
-            unreachable!();
-        }
-    }
-}
-
-type PipelineStartFutureOutput = RsResult<Pipeline<marker::Active>>;
-
-/// Future type returned by [start_async()](Pipeline::start_async).
-#[derive(Debug)]
-pub struct PipelineStartFuture {
-    pipeline_opt: Option<(Option<Config>, Pipeline<marker::Inactive>)>,
-    rx_opt: Option<OneShotReceiver<PipelineStartFutureOutput>>,
-}
-
-impl PipelineStartFuture {
-    pub(crate) fn new(config_opt: Option<Config>, pipeline: Pipeline<marker::Inactive>) -> Self {
-        Self {
-            pipeline_opt: Some((config_opt, pipeline)),
-            rx_opt: None,
-        }
-    }
-}
-impl<'a> Future for PipelineStartFuture {
-    type Output = PipelineStartFutureOutput;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut AsyncContext) -> Poll<Self::Output> {
-        let self_mut = self.get_mut();
-
-        if let Some((config_opt, pipeline)) = self_mut.pipeline_opt.take() {
-            let waker = cx.waker().clone();
-            let (tx, rx) = futures::channel::oneshot::channel();
-            self_mut.rx_opt = Some(rx);
-
-            std::thread::spawn(move || {
-                let result = pipeline.start(config_opt);
-                if let Ok(()) = tx.send(result) {
-                    waker.wake();
-                }
-            });
-            Poll::Pending
-        } else if let Some(rx) = &mut self_mut.rx_opt {
-            match rx.try_recv().unwrap() {
-                Some(result) => Poll::Ready(result),
-                None => Poll::Pending,
-            }
-        } else {
-            unreachable!();
-        }
-    }
-}
