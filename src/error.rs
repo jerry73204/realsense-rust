@@ -26,7 +26,17 @@ impl ErrorChecker {
     pub fn check(mut self) -> Result<()> {
         self.checked = true;
         match NonNull::new(self.ptr) {
-            Some(nonnull) => Err(Error::from_ptr(nonnull)),
+            Some(nonnull) => {
+                let msg = get_error_message(nonnull.clone());
+                let err = if msg.starts_with("Frame didn't arrive within ") {
+                    Error::Timeout(nonnull)
+                } else if msg.starts_with("object doesn\'t support option #") {
+                    Error::UnsupportedOption(nonnull)
+                } else {
+                    Error::Other(nonnull)
+                };
+                Err(err)
+            }
             None => Ok(()),
         }
     }
@@ -41,33 +51,36 @@ impl Drop for ErrorChecker {
 }
 
 /// The error type wraps around underlying error thrown by librealsense library.
-pub struct Error {
-    ptr: NonNull<realsense_sys::rs2_error>,
+pub enum Error {
+    Timeout(NonNull<realsense_sys::rs2_error>),
+    UnsupportedOption(NonNull<realsense_sys::rs2_error>),
+    Other(NonNull<realsense_sys::rs2_error>),
 }
 
 impl Error {
-    pub fn error_message(&self) -> &CStr {
-        unsafe {
-            let ptr = realsense_sys::rs2_get_error_message(self.ptr.as_ptr());
-            CStr::from_ptr(ptr)
-        }
+    pub fn error_message(&self) -> &str {
+        get_error_message(self.get_ptr())
     }
 
-    pub(crate) fn from_ptr(ptr: NonNull<realsense_sys::rs2_error>) -> Self {
-        Self { ptr }
+    pub(crate) fn get_ptr(&self) -> NonNull<realsense_sys::rs2_error> {
+        match self {
+            Error::Timeout(ptr) => ptr.clone(),
+            Error::UnsupportedOption(ptr) => ptr.clone(),
+            Error::Other(ptr) => ptr.clone(),
+        }
     }
 }
 
 impl Display for Error {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
-        let message = self.error_message().to_str().unwrap();
+        let message = self.error_message();
         write!(formatter, "RealSense error: {}", message)
     }
 }
 
 impl Debug for Error {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
-        let message = self.error_message().to_str().unwrap();
+        let message = self.error_message();
         write!(formatter, "RealSense error: {}", message)
     }
 }
@@ -80,11 +93,19 @@ unsafe impl Sync for Error {}
 
 impl Drop for Error {
     fn drop(&mut self) {
+        let ptr = self.get_ptr();
         unsafe {
-            realsense_sys::rs2_free_error(self.ptr.as_ptr());
+            realsense_sys::rs2_free_error(ptr.as_ptr());
         }
     }
 }
 
 /// A convenient alias Result type.
 pub type Result<T> = std::result::Result<T, Error>;
+
+fn get_error_message<'a>(ptr: NonNull<realsense_sys::rs2_error>) -> &'a str {
+    unsafe {
+        let ptr = realsense_sys::rs2_get_error_message(ptr.as_ptr());
+        CStr::from_ptr(ptr).to_str().unwrap()
+    }
+}

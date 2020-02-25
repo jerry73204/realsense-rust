@@ -137,7 +137,7 @@ where
     /// Gets an attribute on sensor.
     ///
     /// It will return error if the attribute is not available on sensor.
-    pub fn get_option(&self, option: Rs2Option) -> RsResult<Option<f32>> {
+    pub fn get_option(&self, option: Rs2Option) -> RsResult<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_option(
@@ -145,20 +145,8 @@ where
                 option as realsense_sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
-            match checker.check() {
-                Ok(()) => Ok(Some(val)),
-                Err(err) => {
-                    let msg = err.error_message();
-                    if msg
-                        .to_bytes()
-                        .starts_with(b"object doesn\'t support option #")
-                    {
-                        Ok(None)
-                    } else {
-                        Err(err)
-                    }
-                }
-            }
+            checker.check()?;
+            Ok(val)
         }
     }
 
@@ -299,7 +287,7 @@ where
 impl Sensor<marker::Depth> {
     /// Gets the depth units of depth sensor.
     pub fn depth_units(&self) -> RsResult<f32> {
-        self.get_option(Rs2Option::DepthUnits).transpose().unwrap()
+        self.get_option(Rs2Option::DepthUnits)
     }
 }
 

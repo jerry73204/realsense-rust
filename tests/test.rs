@@ -5,13 +5,13 @@ use realsense_rust::{
     base::Resolution,
     config::Config,
     context::Context,
-    error::Result as RsResult,
+    error::{Error as RsError, Result as RsResult},
     frame::marker::{Depth, Video},
     kind::{Format, StreamKind},
     pipeline::Pipeline,
     sensor::marker as sensor_marker,
 };
-use std::sync::Mutex;
+use std::{sync::Mutex, time::Duration};
 use tokio::runtime::Runtime;
 
 lazy_static! {
@@ -44,7 +44,15 @@ fn async_test() -> Fallible<()> {
 
         // process frames
         for _ in 0..16 {
-            let frames = pipeline.wait_async(None).await?;
+            let timeout = Duration::from_millis(1000);
+            let frames_result = pipeline.wait_async(Some(timeout)).await;
+            let frames = match frames_result {
+                Err(RsError::Timeout(..)) => {
+                    println!("timeout error");
+                    continue;
+                }
+                result @ _ => result?,
+            };
 
             println!("frame number = {}", frames.number()?);
             for frame_result in frames.try_into_iter()? {
@@ -144,7 +152,15 @@ fn sync_test() -> Fallible<()> {
 
     // process frames
     for _ in 0..16 {
-        let frames = pipeline.wait(None)?;
+        let timeout = Duration::from_millis(1000);
+        let frames_result = pipeline.wait(Some(timeout));
+        let frames = match frames_result {
+            Err(RsError::Timeout(..)) => {
+                println!("timeout error");
+                continue;
+            }
+            result @ _ => result?,
+        };
 
         println!("frame number = {}", frames.number()?);
         for frame_result in frames.try_into_iter()? {
