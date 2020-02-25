@@ -9,15 +9,12 @@ use image::{
     flat::{FlatSamples, SampleLayout},
     ColorType, ImageBuffer, Luma,
 };
-use nalgebra::{SliceStorage, Vector, U1, U3};
+use nalgebra::Vector3;
 use num_traits::FromPrimitive;
 use safe_transmute::guard::PedanticGuard;
 use std::{
-    iter::FusedIterator, marker::PhantomData, mem::MaybeUninit, os::raw::c_int, path::Path,
-    ptr::NonNull,
+    iter::FusedIterator, marker::PhantomData, mem::MaybeUninit, os::raw::c_int, ptr::NonNull,
 };
-
-pub type MotionData<'a> = Vector<f32, U3, SliceStorage<'a, f32, U3, U1, U1, U1>>;
 
 /// Marker types and traits for [Frame].
 pub mod marker {
@@ -640,13 +637,13 @@ impl Frame<marker::Points> {
 
 impl Frame<marker::Motion> {
     /// Gets motion data.
-    pub fn get_motion_data(&self) -> RsResult<MotionData> {
-        let data = unsafe {
-            let data: &[f32] = std::mem::transmute(self.data()?);
-            let storage = SliceStorage::from_raw_parts(data.as_ptr(), (U3, U1), (U1, U1));
-            MotionData::from_data(storage)
+    pub fn motion_data(&self) -> RsResult<Vector3<f32>> {
+        let slice = safe_transmute::transmute_many::<f32, PedanticGuard>(self.data()?).unwrap();
+        let vector = match slice {
+            &[x, y, z] => Vector3::new(x, y, z),
+            _ => unreachable!("please report bug"),
         };
-        Ok(data)
+        Ok(vector)
     }
 }
 
