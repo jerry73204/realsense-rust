@@ -82,6 +82,9 @@ impl AsMut<realsense_sys::rs2_pose> for PoseData {
     }
 }
 
+unsafe impl Send for PoseData {}
+unsafe impl Sync for PoseData {}
+
 /// Contains width and height of a frame.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Resolution {

@@ -668,6 +668,7 @@ where
 }
 
 unsafe impl<Kind> Send for Frame<Kind> where Kind: marker::FrameKind {}
+unsafe impl<Kind> Sync for Frame<Kind> where Kind: marker::FrameKind {}
 
 #[derive(Debug)]
 pub struct CompositeFrameIntoIter {
