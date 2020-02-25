@@ -12,7 +12,7 @@ Add the following in `Cargo.toml` to use this crate in your project.
 
 ```toml
 [dependencies]
-realsense-rust = "^0.1.2"
+realsense-rust = "^0.2.1"
 ```
 
 The project is under heavy development. If you really want this fancy new, bleeding edge and up-to-date features, use git repo as your dependency.
