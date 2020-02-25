@@ -6,7 +6,11 @@ use nalgebra::{Quaternion, Translation3, Unit, UnitQuaternion, Vector3};
 use std::{
     convert::{AsMut, AsRef},
     ops::{Deref, DerefMut},
+    time::Duration,
 };
+
+pub const DEFAULT_TIMEOUT: Duration =
+    Duration::from_millis(realsense_sys::RS2_DEFAULT_TIMEOUT as u64);
 
 /// Represents a pose detected by sensor.
 #[derive(Debug)]

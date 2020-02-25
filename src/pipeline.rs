@@ -1,7 +1,8 @@
 use crate::{
+    base::DEFAULT_TIMEOUT,
     config::Config,
     context::Context,
-    error::{ErrorChecker, Result as RsResult},
+    error::{Error as RsError, ErrorChecker, Result as RsResult},
     frame::{marker::Composite, Frame},
     pipeline_profile::PipelineProfile,
 };
@@ -174,19 +175,28 @@ impl Pipeline<marker::Active> {
 
     /// Block and wait for next frame.
     pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
-        let timeout_ms = timeout
-            .map(|duration| duration.as_millis() as c_uint)
-            .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
-        let frame = unsafe {
+        let timeout_ms = timeout.unwrap_or(DEFAULT_TIMEOUT).as_millis() as c_uint;
+
+        let frame = loop {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
-                self.ptr.as_ptr(),
-                timeout_ms,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
-            frame
+            let ptr = unsafe {
+                realsense_sys::rs2_pipeline_wait_for_frames(
+                    self.ptr.as_ptr(),
+                    timeout_ms,
+                    checker.inner_mut_ptr(),
+                )
+            };
+
+            match (timeout, checker.check()) {
+                (None, Err(RsError::Timeout(..))) => continue,
+                tuple @ _ => {
+                    let (_, result) = tuple;
+                    result?;
+                }
+            }
+
+            let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+            break frame;
         };
 
         Ok(frame)
