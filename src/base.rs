@@ -1,7 +1,7 @@
 //! Common types and functions.
 
 use crate::kind::{Format, StreamKind};
-use image::{Bgr, Bgra, ConvertBuffer, DynamicImage, ImageBuffer, Rgb, Rgba};
+use image::{Bgr, Bgra, ConvertBuffer, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
 use nalgebra::{Quaternion, Translation3, Unit, UnitQuaternion, Vector3};
 use std::{
     convert::{AsMut, AsRef},
@@ -111,6 +111,8 @@ impl<'a> From<ColorImage<'a>> for DynamicImage {
         }
     }
 }
+
+pub type DepthImage<'a> = ImageBuffer<Luma<u16>, &'a [u16]>;
 
 /// Represents the specification of a stream.
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use crate::{
-    base::{ColorImage, PoseData, Resolution, StreamProfileData},
+    base::{ColorImage, DepthImage, PoseData, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
@@ -7,7 +7,7 @@ use crate::{
 };
 use image::{
     flat::{FlatSamples, SampleLayout},
-    ColorType, ImageBuffer, Luma,
+    ColorType,
 };
 use nalgebra::Vector3;
 use num_traits::FromPrimitive;
@@ -370,7 +370,7 @@ impl Frame<marker::Depth> {
     }
 
     /// Gets depth image buffer referencing underlying raw data.
-    pub fn depth_image(&self) -> RsResult<ImageBuffer<Luma<u16>, &[u16]>> {
+    pub fn depth_image(&self) -> RsResult<DepthImage> {
         let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
         let raw_data = self.data()?;
         let Resolution { width, height } = self.resolution()?;
