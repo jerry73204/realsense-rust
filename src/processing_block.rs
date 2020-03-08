@@ -15,45 +15,53 @@ pub mod marker {
         const TYPE: Extension;
     }
 
+    #[derive(Debug)]
     pub struct Any;
     impl ProcessingBlockKind for Any {}
 
+    #[derive(Debug)]
     pub struct Decimation;
     impl ProcessingBlockKind for Decimation {}
     impl NonAnyProcessingBlockKind for Decimation {
         const TYPE: Extension = Extension::DecimationFilter;
     }
 
+    #[derive(Debug)]
     pub struct Threshold;
     impl ProcessingBlockKind for Threshold {}
     impl NonAnyProcessingBlockKind for Threshold {
         const TYPE: Extension = Extension::ThresholdFilter;
     }
 
+    #[derive(Debug)]
     pub struct Disparity;
     impl ProcessingBlockKind for Disparity {}
     impl NonAnyProcessingBlockKind for Disparity {
         const TYPE: Extension = Extension::DisparityFilter;
     }
 
+    #[derive(Debug)]
     pub struct Spatial;
     impl ProcessingBlockKind for Spatial {}
     impl NonAnyProcessingBlockKind for Spatial {
         const TYPE: Extension = Extension::SpatialFilter;
     }
 
+    #[derive(Debug)]
     pub struct Temporal;
     impl ProcessingBlockKind for Temporal {}
     impl NonAnyProcessingBlockKind for Temporal {
         const TYPE: Extension = Extension::TemporalFilter;
     }
 
+    #[derive(Debug)]
     pub struct HoleFilling;
     impl ProcessingBlockKind for HoleFilling {}
     impl NonAnyProcessingBlockKind for HoleFilling {
         const TYPE: Extension = Extension::HoleFillingFilter;
     }
 
+    #[derive(Debug)]
     pub struct ZeroOrder;
     impl ProcessingBlockKind for ZeroOrder {}
     impl NonAnyProcessingBlockKind for ZeroOrder {
