@@ -1,3 +1,5 @@
+//! Defines the iterable list of devices.
+
 use crate::{
     device::Device,
     error::{ErrorChecker, Result as RsResult},

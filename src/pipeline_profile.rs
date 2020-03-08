@@ -1,3 +1,5 @@
+//! Defines the profile type of pipeline.
+
 use crate::{
     device::Device,
     error::{ErrorChecker, Result as RsResult},

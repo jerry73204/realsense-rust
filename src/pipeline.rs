@@ -1,3 +1,5 @@
+//! Defines the pipeline type.
+
 use crate::{
     base::DEFAULT_TIMEOUT,
     config::Config,

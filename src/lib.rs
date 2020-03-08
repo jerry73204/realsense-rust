@@ -17,6 +17,7 @@ pub mod sensor_list;
 pub mod stream_profile;
 pub mod stream_profile_list;
 
+/// The mod collects common used traits from this crate.
 pub mod prelude {
     pub use crate::frame::{DepthFrame, DisparityFrame, GenericFrame, VideoFrame};
 }
@@ -40,7 +41,7 @@ pub use pipeline::Pipeline;
 pub use pipeline_profile::PipelineProfile;
 pub use processing_block::ProcessingBlock;
 pub use processing_block_list::{ProcessingBlockList, ProcessingBlockListIntoIter};
-pub use sensor::{Sensor, ExtendedSensor};
+pub use sensor::{ExtendedSensor, Sensor};
 pub use sensor_list::{SensorList, SensorListIntoIter};
 pub use stream_profile::StreamProfile;
 pub use stream_profile_list::{StreamProfileList, StreamProfileListIntoIter};

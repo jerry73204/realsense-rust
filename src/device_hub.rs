@@ -1,3 +1,5 @@
+//! Defines the type of device hubs.
+
 use crate::{
     device::Device,
     error::{ErrorChecker, Result as RsResult},
@@ -6,6 +8,7 @@ use crate::{
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::NonNull;
 
+/// Represents a collection of devices.
 #[derive(Debug)]
 pub struct DeviceHub {
     pub(crate) ptr: NonNull<realsense_sys::rs2_device_hub>,

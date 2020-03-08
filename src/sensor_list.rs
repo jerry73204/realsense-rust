@@ -1,3 +1,5 @@
+//! Defines the iterable list of sensors.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     sensor::{marker as sensor_marker, Sensor},
@@ -68,11 +70,16 @@ impl IntoIterator for SensorList {
     type Item = RsResult<Sensor<sensor_marker::Any>>;
     type IntoIter = SensorListIntoIter;
 
+    /// The method internally calls [SensorList::try_into_iter](SensorList::try_into_iter).
+    ///
+    /// # Panics
+    /// It panics if [SensorList::try_into_iter](SensorList::try_into_iter) returns [Err](Result::Err).
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
 }
 
+/// The iterator type returned by [SensorList::try_into_iter](SensorList::try_into_iter).
 #[derive(Debug)]
 pub struct SensorListIntoIter {
     len: usize,

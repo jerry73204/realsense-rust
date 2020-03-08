@@ -27,7 +27,7 @@ impl Config {
         Ok(config)
     }
 
-    /// Enable data stream with given attributes.
+    /// Enable data stream with attributes.
     pub fn enable_stream(
         self,
         stream: StreamKind,

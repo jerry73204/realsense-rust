@@ -1,3 +1,5 @@
+//! Defines the queue type of frames.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     frame::{
@@ -11,6 +13,7 @@ use std::{
     time::Duration,
 };
 
+/// The queue of frames.
 #[derive(Debug)]
 pub struct FrameQueue {
     ptr: NonNull<realsense_sys::rs2_frame_queue>,

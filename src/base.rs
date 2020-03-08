@@ -92,7 +92,11 @@ pub struct Resolution {
     pub height: usize,
 }
 
-/// Image type returned by [Frame::color_image](Frame::color_image).
+/// Image type returned by sensor.
+///
+/// This is a wrapper of various [ImageBuffer](image::ImageBuffer) variants.
+/// It pixel data is stored in slice for better performance.
+/// The type implements `Into<DynamicImage>` to create owned type.
 #[derive(Debug, Clone)]
 pub enum Rs2Image<'a> {
     Bgr8(ImageBuffer<Bgr<u8>, &'a [u8]>),

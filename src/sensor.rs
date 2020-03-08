@@ -1,3 +1,5 @@
+//! Defines the sensor type.
+
 use crate::{
     device::Device,
     error::{ErrorChecker, Result as RsResult},
@@ -10,7 +12,10 @@ use std::{ffi::CStr, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
 pub mod marker {
     use super::*;
 
+    /// The marker traits of all kinds of sensor.
     pub trait SensorKind {}
+
+    /// The marker traits of all kinds of sensor except [Any](Any).
     pub trait NonAnySensorKind
     where
         Self: SensorKind,
@@ -86,6 +91,7 @@ pub mod marker {
     }
 }
 
+/// The enumeration of extended sensor type returned by [Sensor::try_extend](Sensor::try_extend).
 #[derive(Debug)]
 pub enum ExtendedSensor {
     Color(Sensor<marker::Color>),
@@ -170,6 +176,7 @@ where
         Ok(list)
     }
 
+    /// Retrieves list of recommended processing blocks.
     pub fn recommended_processing_blocks(&self) -> RsResult<ProcessingBlockList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
@@ -292,7 +299,7 @@ impl Sensor<marker::Any> {
         }
     }
 
-    /// Try to change the type of sensor.
+    /// Extends to a specific sensor subtype.
     pub fn try_extend_to<NewKind>(self) -> RsResult<Result<Sensor<NewKind>, Self>>
     where
         NewKind: marker::NonAnySensorKind,
@@ -309,6 +316,7 @@ impl Sensor<marker::Any> {
         }
     }
 
+    /// Extends to one of a sensor subtype.
     pub fn try_extend(self) -> RsResult<ExtendedSensor> {
         let sensor_any = self;
 

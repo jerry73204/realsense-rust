@@ -1,3 +1,5 @@
+//! Defines the sensor context.
+
 use crate::{
     device_hub::DeviceHub,
     device_list::DeviceList,

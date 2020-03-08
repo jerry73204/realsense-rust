@@ -1,3 +1,5 @@
+//! Defines the processing block type.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     kind::Extension,
@@ -70,6 +72,7 @@ pub mod marker {
 
 }
 
+/// The type of data processing unit.
 #[derive(Debug)]
 pub struct ProcessingBlock<Kind>
 where

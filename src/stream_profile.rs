@@ -1,3 +1,5 @@
+//! Defines the profile type of streams.
+
 use crate::{
     base::{Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
@@ -7,6 +9,7 @@ use nalgebra::{Isometry3, MatrixMN, Translation3, UnitQuaternion, U3};
 use num_traits::FromPrimitive;
 use std::{borrow::Borrow, mem::MaybeUninit, ptr::NonNull};
 
+/// The profile of stream.
 #[derive(Debug)]
 pub struct StreamProfile {
     ptr: NonNull<realsense_sys::rs2_stream_profile>,

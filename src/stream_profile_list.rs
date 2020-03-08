@@ -1,3 +1,5 @@
+//! Defines the iterable list of stream profiles.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     stream_profile::StreamProfile,

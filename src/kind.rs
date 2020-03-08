@@ -1,7 +1,10 @@
+//! Defines the common used enums.
+
 /// Collection of enum types.
 use num_derive::FromPrimitive;
 use std::ffi::CStr;
 
+/// The enumeration of options.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rs2Option {
@@ -72,6 +75,7 @@ pub enum Rs2Option {
     Count = realsense_sys::rs2_option_RS2_OPTION_COUNT,
 }
 
+/// The enumeration of timestamp domains.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimestampDomain {
@@ -102,6 +106,7 @@ impl ToString for TimestampDomain {
     }
 }
 
+/// The enumeration of metadata kinds of a frame.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FrameMetaDataValue {
@@ -148,6 +153,7 @@ pub enum FrameMetaDataValue {
     Count = realsense_sys::rs2_frame_metadata_value_RS2_FRAME_METADATA_COUNT,
 }
 
+/// The enumeration of extensions.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Extension {
@@ -205,6 +211,7 @@ pub enum Extension {
     Roi = realsense_sys::rs2_extension_RS2_EXTENSION_ROI,
 }
 
+/// The enumeration of sensor information.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CameraInfo {
@@ -225,6 +232,7 @@ pub enum CameraInfo {
     Count = realsense_sys::rs2_camera_info_RS2_CAMERA_INFO_COUNT,
 }
 
+/// The enumeration of all categories of stream.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StreamKind {
@@ -241,6 +249,7 @@ pub enum StreamKind {
     Count = realsense_sys::rs2_stream_RS2_STREAM_COUNT,
 }
 
+/// The enumeration of frame data format.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Format {

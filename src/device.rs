@@ -1,3 +1,5 @@
+//! Defines the device types.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     kind::CameraInfo,

@@ -1,15 +1,19 @@
+//! Defines the iterable list of processing blocks.
+
 use crate::{
     error::{ErrorChecker, Result as RsResult},
     processing_block::{marker as processing_block_marker, ProcessingBlock},
 };
 use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
 
+/// The iterable list of [ProcessingBlock](ProcessingBlock)s.
 #[derive(Debug)]
 pub struct ProcessingBlockList {
     ptr: NonNull<realsense_sys::rs2_processing_block_list>,
 }
 
 impl ProcessingBlockList {
+    /// Retrieves the [ProcessingBlock](ProcessingBlock) instance at index.
     pub fn get(&mut self, index: usize) -> RsResult<ProcessingBlock<processing_block_marker::Any>> {
         let block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -24,6 +28,7 @@ impl ProcessingBlockList {
         Ok(block)
     }
 
+    /// Returns the length of list.
     pub fn len(&mut self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -36,6 +41,7 @@ impl ProcessingBlockList {
         }
     }
 
+    /// Converts to iterator type.
     pub fn try_into_iter(mut self) -> RsResult<ProcessingBlockListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
@@ -58,6 +64,10 @@ impl IntoIterator for ProcessingBlockList {
     type Item = RsResult<ProcessingBlock<processing_block_marker::Any>>;
     type IntoIter = ProcessingBlockListIntoIter;
 
+    /// The method calls [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter).
+    ///
+    /// # Panics
+    /// It panics if [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter) returns [Err](Result::Err).
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
@@ -71,6 +81,7 @@ impl Drop for ProcessingBlockList {
     }
 }
 
+/// The iterator type returned by [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter).
 pub struct ProcessingBlockListIntoIter {
     len: usize,
     index: usize,

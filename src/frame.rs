@@ -1,7 +1,9 @@
+//! Defines the frame type including sensor data.
+
 use crate::{
     base::{PoseData, Resolution, Rs2Image, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
+    kind::{Extension, Format, FrameMetaDataValue, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::StreamProfile,
 };
@@ -20,8 +22,10 @@ use std::{
 pub mod marker {
     use super::*;
 
+    /// The marker trait for frame kinds.
     pub trait FrameKind {}
 
+    /// The marker traits for frame kinds except [Any](Any).
     pub trait NonAnyFrameKind
     where
         Self: FrameKind,
@@ -91,6 +95,7 @@ pub mod marker {
     }
 }
 
+/// The trait provides common methods on frames of all kinds.
 pub trait GenericFrame {
     /// Obtains the metadata of frame.
     fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
@@ -130,6 +135,7 @@ pub trait GenericFrame {
         }
     }
 
+    /// Gets the timestamp.
     fn timestamp(&self) -> RsResult<f64> {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -142,6 +148,7 @@ pub trait GenericFrame {
         }
     }
 
+    /// Gets the domain of timestamp.
     fn timestamp_domain(&self) -> RsResult<TimestampDomain> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
@@ -202,6 +209,7 @@ pub trait GenericFrame {
     unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self;
 }
 
+/// The trait provides methods on frames with video data.
 pub trait VideoFrame
 where
     Self: GenericFrame,
@@ -264,7 +272,7 @@ where
 
     /// Gets color image buffer referencing underlying raw data.
     fn image(&self) -> RsResult<Rs2Image> {
-        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
+        let StreamProfileData { format, .. } = self.stream_profile()?.get_data()?;
         let raw_data = self.data()?;
         let Resolution { width, height } = self.resolution()?;
         let stride_in_bytes = self.stride_in_bytes()?;
@@ -424,6 +432,9 @@ where
     }
 }
 
+/// The trait provides methods on frames with depth data.
+///
+/// Frame types with this trait also implements [VideoFrame](VideoFrame) trait.
 pub trait DepthFrame
 where
     Self: VideoFrame,
@@ -444,6 +455,7 @@ where
         Ok(distance)
     }
 
+    /// Gets the length in meter per distance unit.
     fn depth_units(&self) -> RsResult<f32> {
         let sensor = self.sensor()?;
         let sensor = sensor.try_extend_to::<sensor_marker::Depth>()?.unwrap();
@@ -452,11 +464,15 @@ where
     }
 }
 
+/// The trait provides methods on frames with disparity data.
+///
+/// Frame types with this trait also implements [DepthFrame](DepthFrame) trait.
 pub trait DisparityFrame
 where
     Self: DepthFrame,
 {
-    fn stereo_baseline(&self) -> RsResult<f32> {
+    /// Retrieves the distance between the two IR sensors.
+    fn baseline(&self) -> RsResult<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
@@ -469,6 +485,10 @@ where
     }
 }
 
+/// The type returned by [Frame::<Any>::try_extend](Frame::try_extend).
+///
+/// It enumerates all possible frame extensions. If the frame failed to
+/// extend any one of the kind, it falls back to [ExtendedFrame::Other](ExtendedFrame::Other) variant.
 #[derive(Debug)]
 pub enum ExtendedFrame {
     Points(Frame<marker::Points>),
@@ -481,6 +501,7 @@ pub enum ExtendedFrame {
     Other(Frame<marker::Any>),
 }
 
+/// Represents a collection of sensor data.
 #[derive(Debug)]
 pub struct Frame<Kind>
 where
@@ -731,6 +752,11 @@ impl IntoIterator for Frame<marker::Composite> {
     type Item = RsResult<Frame<marker::Any>>;
     type IntoIter = CompositeFrameIntoIter;
 
+    /// The method internally calls [Frame::try_into_iter](Frame::try_into_iter).
+    ///
+    /// # Panics
+    /// This method panics if [Frame::try_into_iter](Frame::try_into_iter) returns [Err](Result::Err).
+    ///
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
@@ -750,6 +776,7 @@ where
 unsafe impl<Kind> Send for Frame<Kind> where Kind: marker::FrameKind {}
 unsafe impl<Kind> Sync for Frame<Kind> where Kind: marker::FrameKind {}
 
+/// The iterator type returned by [Frame::try_into_iter](Frame::try_into_iter).
 #[derive(Debug)]
 pub struct CompositeFrameIntoIter {
     len: usize,
