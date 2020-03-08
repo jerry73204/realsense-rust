@@ -1,5 +1,3 @@
-extern crate bindgen;
-
 use failure::Fallible;
 use std::{
     collections::HashSet,
@@ -8,67 +6,77 @@ use std::{
     path::{Path, PathBuf},
 };
 
-fn main() {
+fn main() -> Fallible<()> {
     // Tell cargo to tell rustc to link the system shared library
     println!("cargo:rustc-link-lib=realsense2");
 
-    // Probe libary
-    let library = probe_library("realsense2").unwrap();
+    #[cfg(feature = "buildtime-bindgen")]
+    {
+        // Probe libary
+        let library = probe_library("realsense2")?;
 
-    // Verify version
-    let (include_dir, version) = library
-        .include_paths
-        .iter()
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .filter_map(|path| {
-            let dir = Path::new(path).join("librealsense2");
-            if dir.is_dir() {
-                match get_version_from_header_dir(&dir) {
-                    Some(version) => Some((dir, version)),
-                    None => None,
+        // Verify version
+        let (include_dir, version) = library
+            .include_paths
+            .iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .filter_map(|path| {
+                let dir = Path::new(path).join("librealsense2");
+                if dir.is_dir() {
+                    match get_version_from_header_dir(&dir) {
+                        Some(version) => Some((dir, version)),
+                        None => None,
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
-            }
-        })
-        .next()
-        .expect("fail to detect librealsense2 version");
+            })
+            .next()
+            .expect("fail to detect librealsense2 version");
 
-    assert_eq!(
-        &version.major,
-        "2",
-        "librealsense2 version {} is not supported",
-        version.to_string()
-    );
+        assert_eq!(
+            &version.major,
+            "2",
+            "librealsense2 version {} is not supported",
+            version.to_string()
+        );
 
-    let bindings = bindgen::Builder::default()
-        .header(include_dir.join("rs.h").to_str().unwrap())
-        .header(
-            include_dir
-                .join("h")
-                .join("rs_pipeline.h")
-                .to_str()
-                .unwrap(),
-        )
-        .header(
-            include_dir
-                .join("h")
-                .join("rs_advanced_mode_command.h")
-                .to_str()
-                .unwrap(),
-        )
-        .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
-        .generate()
-        .expect("Unable to generate bindings");
+        let bindings = bindgen::Builder::default()
+            .header(include_dir.join("rs.h").to_str().unwrap())
+            .header(
+                include_dir
+                    .join("h")
+                    .join("rs_pipeline.h")
+                    .to_str()
+                    .unwrap(),
+            )
+            .header(
+                include_dir
+                    .join("h")
+                    .join("rs_advanced_mode_command.h")
+                    .to_str()
+                    .unwrap(),
+            )
+            .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
+            .generate()
+            .expect("Unable to generate bindings");
 
-    // Write the bindings to the $OUT_DIR/bindings.rs file.
-    let out_path = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+        // Write the bindings to file
+        let cargo_manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+        let bindings_dir = cargo_manifest_dir.join("bindings");
+        let bindings_file = bindings_dir.join("bindings.rs");
+
+        std::fs::create_dir_all(&bindings_dir)?;
+        bindings
+            .write_to_file(bindings_file)
+            .expect("Couldn't write bindings!");
+    }
+
+    Ok(())
 }
 
+#[cfg(feature = "buildtime-bindgen")]
 fn get_version_from_header_dir<P>(dir: P) -> Option<Version>
 where
     P: AsRef<Path>,
@@ -120,6 +128,7 @@ where
     }
 }
 
+#[cfg(feature = "buildtime-bindgen")]
 fn probe_library(pkg_name: &str) -> Fallible<Library> {
     let package = pkg_config::probe_library(pkg_name)?;
     let lib = Library {

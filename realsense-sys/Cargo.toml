@@ -9,14 +9,19 @@ documentation = "https://docs.rs/realsense-sys/"
 homepage = "https://github.com/jerry73204/realsense-rust"
 repository = "https://github.com/jerry73204/realsense-rust"
 
+[dependencies]
+
+
 [build-dependencies]
-bindgen = "^0.42.1"
+bindgen = { version = "^0.42.1", optional = true }
 failure = "^0.1.6"
 
 [target.'cfg(not(target_env = "msvc"))'.build-dependencies]
-pkg-config = "^0.3.17"
+pkg-config = { version = "^0.3.17", optional = true }
 
 [target.'cfg(target_env = "msvc")'.build-dependencies]
-vcpkg = "^0.2.8"
+vcpkg = { version = "^0.2.8", optional = true }
 
-[dependencies]
+[features]
+default = []
+buildtime-bindgen = ["bindgen"]
