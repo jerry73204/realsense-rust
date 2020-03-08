@@ -1,41 +1,46 @@
 # RealSense bindings for Rust
 
-The project provides high-level bindings to librealsense2 library.
-
-It includes two crates. The `realsense-rust` serves as high-level library, and `realsense-sys` serves FFI interface to C API.
-
-The project is still under development and production use should be avoided.
+The project provides high-level bindings to librealsense2 library as well as low-level FFI interface.
+It supports asynchronous API and integration with [image](https://github.com/image-rs/image) and [nalgebra](https://github.com/rustsim/nalgebra) types.
 
 ## Usage
 
-Add the following in `Cargo.toml` to use this crate in your project.
+Add the dependency in `Cargo.toml` to import this crate in your project.
 
 ```toml
 [dependencies]
-realsense-rust = "^0.2.1"
+realsense-rust = "^0.3.0"
 ```
 
-The project is under heavy development. If you really want this fancy new, bleeding edge and up-to-date features, use git repo as your dependency.
+If you would like to generate Rust bindings during build time, you can enable the `buildtime-bindgen` feature.
 
 ```toml
 [dependencies]
-realsense-rust = { git = "https://github.com/jerry73204/realsense-rust.git" }
+realsense-rust = { version = "^0.3.0", features = ["buildtime-bindgen"] }
 ```
+
+## Examples
+
+Please visit the [examples](examples) directory to see the example usages.
 
 ## How to make contributions
 
-The project uses bindgen to generate bindings from pure C API, no C++ parts included. All low-level C types and function are gathered in `realsense-sys` crate.
+### realsense-sys: Low-level API
 
-We suggest to follow these steps check out C functions. Their names should be self-explanatory. We also suggest C/C++ examples on official [librealsense](https://github.com/IntelRealSense/librealsense) repository to understand actual usage.
+The project uses bindgen to generate bindings from pure C API.
+
+We suggest the official librealsense2 [documentation](https://github.com/IntelRealSense/librealsense/tree/master/doc) to check out the actual usage of low-level API.
+
+Also, you can choose to browse the generated document for `realsense-sys`.
 
 ```sh
-cd $repo
-cargo doc
-
-firefox target/doc/realsense_sys/index.html  # open doc in browser
+cd $repo/realsense-sys
+cargo doc --open
 ```
 
-The high level API in `realsense-rust` crate is basically wrappers to low-level FFI interface. It written in Rust from scratch rather than by automated means. It's encouraged to use marker traits, trait ops and else to build rusty style interface.
+### realsense-rust: High-level API
+
+The `realsense-rust` crate is basically a wrapper upon the `realsense-sys` crate. We suggest to take C++ API as reference and rewrite them in rusty style.
 
 ## License
 
