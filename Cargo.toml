@@ -19,7 +19,7 @@ image = "^0.23.0"
 safe-transmute = "^0.11.0-rc.2"
 
 [dev-dependencies]
-tokio = { version  = "0.2.11", features = [] }
+tokio = { version  = "0.2.11", features = ["rt-threaded", "macros"] }
 failure = "0.1.6"
 lazy_static = "^1.4.0"
 

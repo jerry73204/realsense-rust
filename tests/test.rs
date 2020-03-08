@@ -2,14 +2,13 @@ use failure::Fallible;
 use image::{DynamicImage, ImageFormat};
 use lazy_static::lazy_static;
 use realsense_rust::{
-    prelude::*, sensor::marker as sensor_marker, Config, Context, Error as RsError, ExtendedFrame,
-    Format, Pipeline, Resolution, Result as Rs2Result, StreamKind,
+    prelude::*, Config, Error as RsError, ExtendedFrame, Format, Pipeline, Resolution, StreamKind,
 };
 use std::{sync::Mutex, time::Duration};
 use tokio::runtime::Runtime;
 
 lazy_static! {
-    // this lock prevenst multiple tests control RealSense device concurrently
+    /// this lock prevenst multiple tests control RealSense device concurrently
     static ref GLOBAL_MUTEX: Mutex<usize> = Mutex::new(0);
 }
 
