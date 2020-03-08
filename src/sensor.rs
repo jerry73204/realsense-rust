@@ -18,62 +18,86 @@ pub mod marker {
         const TYPE: Extension;
     }
 
+    #[derive(Debug)]
     pub struct Any;
     impl SensorKind for Any {}
 
+    #[derive(Debug)]
     pub struct Tm2;
     impl SensorKind for Tm2 {}
     impl NonAnySensorKind for Tm2 {
         const TYPE: Extension = Extension::Tm2Sensor;
     }
 
+    #[derive(Debug)]
     pub struct Pose;
     impl SensorKind for Pose {}
     impl NonAnySensorKind for Pose {
         const TYPE: Extension = Extension::PoseSensor;
     }
 
+    #[derive(Debug)]
     pub struct Color;
     impl SensorKind for Color {}
     impl NonAnySensorKind for Color {
         const TYPE: Extension = Extension::ColorSensor;
     }
 
+    #[derive(Debug)]
     pub struct Depth;
     impl SensorKind for Depth {}
     impl NonAnySensorKind for Depth {
         const TYPE: Extension = Extension::DepthSensor;
     }
 
+    #[derive(Debug)]
     pub struct Motion;
     impl SensorKind for Motion {}
     impl NonAnySensorKind for Motion {
         const TYPE: Extension = Extension::MotionSensor;
     }
 
+    #[derive(Debug)]
     pub struct FishEye;
     impl SensorKind for FishEye {}
     impl NonAnySensorKind for FishEye {
         const TYPE: Extension = Extension::FishEyeSensor;
     }
 
+    #[derive(Debug)]
     pub struct Software;
     impl SensorKind for Software {}
     impl NonAnySensorKind for Software {
         const TYPE: Extension = Extension::SoftwareSensor;
     }
 
+    #[derive(Debug)]
     pub struct L500Depth;
     impl SensorKind for L500Depth {}
     impl NonAnySensorKind for L500Depth {
         const TYPE: Extension = Extension::L500DepthSensor;
     }
 
+    #[derive(Debug)]
     pub struct DepthStereo;
     impl SensorKind for DepthStereo {}
     impl NonAnySensorKind for DepthStereo {
         const TYPE: Extension = Extension::DepthStereoSensor;
     }
+}
+
+#[derive(Debug)]
+pub enum ExtendedSensor {
+    Color(Sensor<marker::Color>),
+    Depth(Sensor<marker::Depth>),
+    DepthStereo(Sensor<marker::DepthStereo>),
+    L500Depth(Sensor<marker::L500Depth>),
+    Motion(Sensor<marker::Motion>),
+    FishEye(Sensor<marker::FishEye>),
+    Software(Sensor<marker::Software>),
+    Pose(Sensor<marker::Pose>),
+    Tm2(Sensor<marker::Tm2>),
+    Other(Sensor<marker::Any>),
 }
 
 /// Represents a sensor on device.
@@ -102,36 +126,6 @@ where
             Device::from_ptr(NonNull::new(ptr).unwrap())
         };
         Ok(device)
-    }
-
-    /// Try to change the type of sensor.
-    pub fn try_extend_to<NewKind>(self) -> RsResult<Result<Sensor<NewKind>, Self>>
-    where
-        NewKind: marker::NonAnySensorKind,
-    {
-        if self.is_extendable_to(NewKind::TYPE)? {
-            let ptr = unsafe { self.take() };
-            let sensor = Sensor {
-                ptr,
-                _phantom: PhantomData,
-            };
-            Ok(Ok(sensor))
-        } else {
-            Ok(Err(self))
-        }
-    }
-
-    pub fn is_extendable_to(&self, extension: Extension) -> RsResult<bool> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_sensor_extendable_to(
-                self.ptr.as_ptr(),
-                extension as realsense_sys::rs2_extension,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(val != 0)
-        }
     }
 
     /// Gets an attribute on sensor.
@@ -281,6 +275,89 @@ where
             ptr,
             _phantom: PhantomData,
         }
+    }
+}
+
+impl Sensor<marker::Any> {
+    pub fn is_extendable_to(&self, extension: Extension) -> RsResult<bool> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_is_sensor_extendable_to(
+                self.ptr.as_ptr(),
+                extension as realsense_sys::rs2_extension,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val != 0)
+        }
+    }
+
+    /// Try to change the type of sensor.
+    pub fn try_extend_to<NewKind>(self) -> RsResult<Result<Sensor<NewKind>, Self>>
+    where
+        NewKind: marker::NonAnySensorKind,
+    {
+        if self.is_extendable_to(NewKind::TYPE)? {
+            let ptr = unsafe { self.take() };
+            let sensor = Sensor {
+                ptr,
+                _phantom: PhantomData,
+            };
+            Ok(Ok(sensor))
+        } else {
+            Ok(Err(self))
+        }
+    }
+
+    pub fn try_extend(self) -> RsResult<ExtendedSensor> {
+        let sensor_any = self;
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::DepthStereo>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::DepthStereo(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Depth>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Depth(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::L500Depth>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::L500Depth(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Color>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Color(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Motion>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Motion(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::FishEye>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::FishEye(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Software>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Software(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Pose>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Pose(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        let sensor_any = match sensor_any.try_extend_to::<marker::Tm2>()? {
+            Ok(sensor) => return Ok(ExtendedSensor::Tm2(sensor)),
+            Err(sensor) => sensor,
+        };
+
+        Ok(ExtendedSensor::Other(sensor_any))
     }
 }
 
