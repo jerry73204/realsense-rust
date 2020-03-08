@@ -24,4 +24,4 @@ vcpkg = { version = "^0.2.8", optional = true }
 
 [features]
 default = []
-buildtime-bindgen = ["bindgen"]
+buildtime-bindgen = ["bindgen", "pkg-config", "vcpkg"]
