@@ -94,25 +94,25 @@ pub struct Resolution {
 
 /// Image type returned by [Frame::color_image](Frame::color_image).
 #[derive(Debug, Clone)]
-pub enum ColorImage<'a> {
+pub enum Rs2Image<'a> {
     Bgr8(ImageBuffer<Bgr<u8>, &'a [u8]>),
     Bgra8(ImageBuffer<Bgra<u8>, &'a [u8]>),
     Rgb8(ImageBuffer<Rgb<u8>, &'a [u8]>),
     Rgba8(ImageBuffer<Rgba<u8>, &'a [u8]>),
+    Luma16(ImageBuffer<Luma<u16>, &'a [u16]>),
 }
 
-impl<'a> From<ColorImage<'a>> for DynamicImage {
-    fn from(from: ColorImage<'a>) -> DynamicImage {
+impl<'a> From<Rs2Image<'a>> for DynamicImage {
+    fn from(from: Rs2Image<'a>) -> DynamicImage {
         match from {
-            ColorImage::Bgr8(image) => DynamicImage::ImageBgr8(image.convert()),
-            ColorImage::Bgra8(image) => DynamicImage::ImageBgra8(image.convert()),
-            ColorImage::Rgb8(image) => DynamicImage::ImageRgb8(image.convert()),
-            ColorImage::Rgba8(image) => DynamicImage::ImageRgba8(image.convert()),
+            Rs2Image::Bgr8(image) => DynamicImage::ImageBgr8(image.convert()),
+            Rs2Image::Bgra8(image) => DynamicImage::ImageBgra8(image.convert()),
+            Rs2Image::Rgb8(image) => DynamicImage::ImageRgb8(image.convert()),
+            Rs2Image::Rgba8(image) => DynamicImage::ImageRgba8(image.convert()),
+            Rs2Image::Luma16(image) => DynamicImage::ImageLuma16(image.convert()),
         }
     }
 }
-
-pub type DepthImage<'a> = ImageBuffer<Luma<u16>, &'a [u16]>;
 
 /// Represents the specification of a stream.
 #[derive(Debug)]

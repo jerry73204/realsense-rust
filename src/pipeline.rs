@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     context::Context,
     error::{Error as RsError, ErrorChecker, Result as RsResult},
-    frame::{marker::Composite, Frame},
+    frame::{marker::Composite, Frame, GenericFrame},
     pipeline_profile::PipelineProfile,
 };
 use std::{

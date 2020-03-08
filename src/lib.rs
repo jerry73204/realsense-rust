@@ -17,14 +17,21 @@ pub mod sensor_list;
 pub mod stream_profile;
 pub mod stream_profile_list;
 
-pub use base::{ColorImage, PoseData, Resolution, StreamProfileData};
+pub mod prelude {
+    pub use crate::frame::{DepthFrame, DisparityFrame, GenericFrame, VideoFrame};
+}
+
+pub use base::{PoseData, Resolution, Rs2Image, StreamProfileData};
 pub use config::Config;
 pub use context::Context;
 pub use device::Device;
 pub use device_hub::DeviceHub;
 pub use device_list::{DeviceList, DeviceListIntoIter};
 pub use error::{Error, Result};
-pub use frame::{CompositeFrameIntoIter, Frame};
+pub use frame::{
+    CompositeFrameIntoIter, DepthFrame, DisparityFrame, ExtendedFrame, Frame, GenericFrame,
+    VideoFrame,
+};
 pub use frame_queue::FrameQueue;
 pub use kind::{
     CameraInfo, Extension, Format, FrameMetaDataValue, Rs2Option, StreamKind, TimestampDomain,

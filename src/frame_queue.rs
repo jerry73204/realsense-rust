@@ -2,7 +2,7 @@ use crate::{
     error::{ErrorChecker, Result as RsResult},
     frame::{
         marker::{Any, FrameKind},
-        Frame,
+        Frame, GenericFrame,
     },
 };
 use std::{

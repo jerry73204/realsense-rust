@@ -1,5 +1,5 @@
 use crate::{
-    base::{ColorImage, DepthImage, PoseData, Resolution, StreamProfileData},
+    base::{PoseData, Resolution, Rs2Image, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
@@ -91,25 +91,13 @@ pub mod marker {
     }
 }
 
-#[derive(Debug)]
-pub struct Frame<Kind>
-where
-    Kind: marker::FrameKind,
-{
-    pub(crate) ptr: NonNull<realsense_sys::rs2_frame>,
-    _phantom: PhantomData<Kind>,
-}
-
-impl<Kind> Frame<Kind>
-where
-    Kind: marker::FrameKind,
-{
+pub trait GenericFrame {
     /// Obtains the metadata of frame.
-    pub fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
+    fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_metadata(
-                self.ptr.as_ptr(),
+                self.ptr().as_ptr(),
                 kind as realsense_sys::rs2_frame_metadata_value,
                 checker.inner_mut_ptr(),
             );
@@ -119,42 +107,46 @@ where
     }
 
     /// Gets frame number.
-    pub fn number(&self) -> RsResult<u64> {
+    fn number(&self) -> RsResult<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val =
-                realsense_sys::rs2_get_frame_number(self.ptr.as_ptr(), checker.inner_mut_ptr());
+                realsense_sys::rs2_get_frame_number(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as u64)
         }
     }
 
     /// Gets raw data size in bytes.
-    pub fn data_size(&self) -> RsResult<usize> {
+    fn data_size(&self) -> RsResult<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_data_size(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let val = realsense_sys::rs2_get_frame_data_size(
+                self.ptr().as_ptr(),
+                checker.inner_mut_ptr(),
+            );
             checker.check()?;
             Ok(val as usize)
         }
     }
 
-    pub fn timestamp(&self) -> RsResult<f64> {
+    fn timestamp(&self) -> RsResult<f64> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_timestamp(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let val = realsense_sys::rs2_get_frame_timestamp(
+                self.ptr().as_ptr(),
+                checker.inner_mut_ptr(),
+            );
             checker.check()?;
             Ok(val as f64)
         }
     }
 
-    pub fn timestamp_domain(&self) -> RsResult<TimestampDomain> {
+    fn timestamp_domain(&self) -> RsResult<TimestampDomain> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_timestamp_domain(
-                self.ptr.as_ptr(),
+                self.ptr().as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -165,79 +157,24 @@ where
     }
 
     /// Gets raw data bytes in frame.
-    pub fn data(&self) -> RsResult<&[u8]> {
+    fn data(&self) -> RsResult<&[u8]> {
         let size = self.data_size()?;
         let slice = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_frame_data(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr =
+                realsense_sys::rs2_get_frame_data(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             std::slice::from_raw_parts::<u8>(ptr.cast::<u8>(), size)
         };
         Ok(slice)
     }
 
-    /// Gets image resolution.
-    pub fn resolution(&self) -> RsResult<Resolution> {
-        let width = self.width()?;
-        let height = self.height()?;
-        let resolution = Resolution { width, height };
-        Ok(resolution)
-    }
-
-    /// Gets image width in pixels.
-    pub fn width(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_width(self.ptr.as_ptr(), checker.inner_mut_ptr());
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
-
-    /// Gets image height in pixels.
-    pub fn height(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_height(self.ptr.as_ptr(), checker.inner_mut_ptr());
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
-
-    /// Gets image row stride in bytes.
-    pub fn stride_in_bytes(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_stride_in_bytes(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
-
-    /// Gets the size of pixel in bits.
-    pub fn bits_per_pixel(&self) -> RsResult<usize> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_bits_per_pixel(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(val as usize)
-        }
-    }
-
     /// Gets the relating sensor instance.
-    pub fn sensor(&self) -> RsResult<Sensor<sensor_marker::Any>> {
+    fn sensor(&self) -> RsResult<Sensor<sensor_marker::Any>> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr =
-                realsense_sys::rs2_get_frame_sensor(self.ptr.as_ptr(), checker.inner_mut_ptr());
+                realsense_sys::rs2_get_frame_sensor(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Sensor::from_ptr(NonNull::new(ptr).unwrap())
         };
@@ -245,11 +182,11 @@ where
     }
 
     /// Gets the relating stream profile.
-    pub fn stream_profile(&self) -> RsResult<StreamProfile> {
+    fn stream_profile(&self) -> RsResult<StreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_frame_stream_profile(
-                self.ptr.as_ptr(),
+                self.ptr().as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -258,13 +195,316 @@ where
         Ok(profile)
     }
 
-    pub(crate) unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_frame> {
+    fn ptr(&self) -> NonNull<realsense_sys::rs2_frame>;
+
+    unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame>;
+
+    unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self;
+}
+
+pub trait VideoFrame
+where
+    Self: GenericFrame,
+{
+    /// Gets image resolution.
+    fn resolution(&self) -> RsResult<Resolution> {
+        let width = self.width()?;
+        let height = self.height()?;
+        let resolution = Resolution { width, height };
+        Ok(resolution)
+    }
+
+    /// Gets image width in pixels.
+    fn width(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val =
+                realsense_sys::rs2_get_frame_width(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets image height in pixels.
+    fn height(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val =
+                realsense_sys::rs2_get_frame_height(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets image row stride in bytes.
+    fn stride_in_bytes(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_get_frame_stride_in_bytes(
+                self.ptr().as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets the size of pixel in bits.
+    fn bits_per_pixel(&self) -> RsResult<usize> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_get_frame_bits_per_pixel(
+                self.ptr().as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val as usize)
+        }
+    }
+
+    /// Gets color image buffer referencing underlying raw data.
+    fn image(&self) -> RsResult<Rs2Image> {
+        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
+        let raw_data = self.data()?;
+        let Resolution { width, height } = self.resolution()?;
+        let stride_in_bytes = self.stride_in_bytes()?;
+        debug_assert_eq!(raw_data.len() % stride_in_bytes, 0, "please report bug");
+
+        let image = match format {
+            Format::Bgr8 => {
+                let channels = 3;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Bgr8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                Rs2Image::Bgr8(image)
+            }
+            Format::Bgra8 => {
+                let channels = 4;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Bgra8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                Rs2Image::Bgra8(image)
+            }
+            Format::Rgb8 => {
+                let channels = 3;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Rgb8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                Rs2Image::Rgb8(image)
+            }
+            Format::Rgba8 => {
+                let channels = 4;
+
+                let sample_size = std::mem::size_of::<u8>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    raw_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width * channels <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: raw_data,
+                    layout: SampleLayout {
+                        channels: channels as u8,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: channels,
+                        height_stride: stride_in_samples,
+                    },
+                    color_hint: Some(ColorType::Rgba8),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                Rs2Image::Rgba8(image)
+            }
+            Format::Z16 => {
+                let sample_size = std::mem::size_of::<u16>();
+                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
+
+                let depth_data: &[u16] =
+                    safe_transmute::transmute_many::<u16, PedanticGuard>(raw_data).unwrap();
+
+                let stride_in_samples = stride_in_bytes / sample_size;
+                debug_assert_eq!(
+                    depth_data.len(),
+                    stride_in_samples * height,
+                    "please report bug"
+                );
+                debug_assert!(width <= stride_in_samples, "please report bug");
+
+                let flat = FlatSamples {
+                    samples: depth_data,
+                    layout: SampleLayout {
+                        channels: 1,
+                        width: width as u32,
+                        height: height as u32,
+                        channel_stride: 1,
+                        width_stride: 1,
+                        height_stride: stride_in_bytes / sample_size,
+                    },
+                    color_hint: Some(ColorType::L16),
+                };
+                let image = flat.try_into_buffer().unwrap();
+                Rs2Image::Luma16(image)
+            }
+            _ => unreachable!("unsupported format. please report bug"),
+        };
+
+        Ok(image)
+    }
+}
+
+pub trait DepthFrame
+where
+    Self: VideoFrame,
+{
+    /// Gets distance at given coordinates.
+    fn distance(&self, x: usize, y: usize) -> RsResult<f32> {
+        let distance = unsafe {
+            let mut checker = ErrorChecker::new();
+            let distance = realsense_sys::rs2_depth_frame_get_distance(
+                self.ptr().as_ptr(),
+                x as c_int,
+                y as c_int,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            distance
+        };
+        Ok(distance)
+    }
+
+    fn depth_units(&self) -> RsResult<f32> {
+        let sensor = self.sensor()?;
+        let sensor = sensor.try_extend_to::<sensor_marker::Depth>()?.unwrap();
+        let depth_units = sensor.depth_units()?;
+        Ok(depth_units)
+    }
+}
+
+pub trait DisparityFrame
+where
+    Self: DepthFrame,
+{
+    fn stereo_baseline(&self) -> RsResult<f32> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
+                self.ptr().as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(baseline)
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ExtendedFrame {
+    Points(Frame<marker::Points>),
+    Composite(Frame<marker::Composite>),
+    Video(Frame<marker::Video>),
+    Depth(Frame<marker::Depth>),
+    Disparity(Frame<marker::Disparity>),
+    Motion(Frame<marker::Motion>),
+    Pose(Frame<marker::Pose>),
+    Other(Frame<marker::Any>),
+}
+
+#[derive(Debug)]
+pub struct Frame<Kind>
+where
+    Kind: marker::FrameKind,
+{
+    pub(crate) ptr: NonNull<realsense_sys::rs2_frame>,
+    _phantom: PhantomData<Kind>,
+}
+
+impl<Kind> GenericFrame for Frame<Kind>
+where
+    Kind: marker::FrameKind,
+{
+    fn ptr(&self) -> NonNull<realsense_sys::rs2_frame> {
+        self.ptr
+    }
+
+    unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_frame> {
         let ptr = std::mem::replace(&mut self.ptr, MaybeUninit::uninit().assume_init());
         std::mem::forget(self);
         ptr
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self {
+    unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
@@ -272,21 +512,40 @@ where
     }
 }
 
+impl VideoFrame for Frame<marker::Video> {}
+
+impl VideoFrame for Frame<marker::Depth> {}
+
+impl DepthFrame for Frame<marker::Depth> {}
+
+impl VideoFrame for Frame<marker::Disparity> {}
+
+impl DepthFrame for Frame<marker::Disparity> {}
+
+impl DisparityFrame for Frame<marker::Disparity> {}
+
+impl<Kind> Frame<Kind> where Kind: marker::FrameKind {}
+
 impl Frame<marker::Any> {
+    pub fn is_extendable_to(&self, extension: Extension) -> RsResult<bool> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_is_frame_extendable_to(
+                self.ptr.as_ptr(),
+                extension as realsense_sys::rs2_extension,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val != 0)
+        }
+    }
+
     pub fn try_extend_to<Kind>(self) -> RsResult<Result<Frame<Kind>, Self>>
     where
         Kind: marker::NonAnyFrameKind,
     {
         unsafe {
-            let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_frame_extendable_to(
-                self.ptr.as_ptr(),
-                Kind::TYPE as realsense_sys::rs2_extension,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-
-            let is_extendable = val != 0;
+            let is_extendable = self.is_extendable_to(Kind::TYPE)?;
             if is_extendable {
                 let ptr = self.take();
                 let frame = Frame {
@@ -298,6 +557,47 @@ impl Frame<marker::Any> {
                 Ok(Err(self))
             }
         }
+    }
+
+    pub fn try_extend(self) -> RsResult<ExtendedFrame> {
+        let frame_any = self;
+
+        let frame_any = match frame_any.try_extend_to::<marker::Points>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Points(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Composite>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Composite(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Motion>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Motion(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Pose>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Pose(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Disparity>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Disparity(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Depth>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Depth(frame)),
+            Err(frame) => frame,
+        };
+
+        let frame_any = match frame_any.try_extend_to::<marker::Video>()? {
+            Ok(frame) => return Ok(ExtendedFrame::Video(frame)),
+            Err(frame) => frame,
+        };
+
+        Ok(ExtendedFrame::Other(frame_any))
     }
 }
 
@@ -352,212 +652,6 @@ impl Frame<marker::Composite> {
     }
 }
 
-impl Frame<marker::Depth> {
-    /// Gets distance at given coordinates.
-    pub fn distance(&self, x: usize, y: usize) -> RsResult<f32> {
-        let distance = unsafe {
-            let mut checker = ErrorChecker::new();
-            let distance = realsense_sys::rs2_depth_frame_get_distance(
-                self.ptr.as_ptr(),
-                x as c_int,
-                y as c_int,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            distance
-        };
-        Ok(distance)
-    }
-
-    /// Gets depth image buffer referencing underlying raw data.
-    pub fn depth_image(&self) -> RsResult<DepthImage> {
-        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
-        let raw_data = self.data()?;
-        let Resolution { width, height } = self.resolution()?;
-        let stride_in_bytes = self.stride_in_bytes()?;
-        debug_assert_eq!(raw_data.len() % stride_in_bytes, 0, "please report bug");
-        debug_assert_eq!(
-            stream,
-            StreamKind::Depth,
-            "stream kind mismatched. please report bug"
-        );
-
-        let image = match format {
-            Format::Z16 => {
-                let sample_size = std::mem::size_of::<u16>();
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
-
-                let depth_data: &[u16] =
-                    safe_transmute::transmute_many::<u16, PedanticGuard>(raw_data).unwrap();
-
-                let stride_in_samples = stride_in_bytes / sample_size;
-                debug_assert_eq!(
-                    depth_data.len(),
-                    stride_in_samples * height,
-                    "please report bug"
-                );
-                debug_assert!(width <= stride_in_samples, "please report bug");
-
-                let flat = FlatSamples {
-                    samples: depth_data,
-                    layout: SampleLayout {
-                        channels: 1,
-                        width: width as u32,
-                        height: height as u32,
-                        channel_stride: 1,
-                        width_stride: 1,
-                        height_stride: stride_in_bytes / sample_size,
-                    },
-                    color_hint: Some(ColorType::L16),
-                };
-                let image = flat.try_into_buffer().unwrap();
-                image
-            }
-            _ => unreachable!("unsupported format. please report bug"),
-        };
-
-        Ok(image)
-    }
-}
-
-impl Frame<marker::Video> {
-    /// Gets color image buffer referencing underlying raw data.
-    pub fn color_image(&self) -> RsResult<ColorImage> {
-        let StreamProfileData { stream, format, .. } = self.stream_profile()?.get_data()?;
-        let raw_data = self.data()?;
-        let Resolution { width, height } = self.resolution()?;
-        let stride_in_bytes = self.stride_in_bytes()?;
-        debug_assert_eq!(raw_data.len() % stride_in_bytes, 0, "please report bug");
-        debug_assert_eq!(
-            stream,
-            StreamKind::Color,
-            "stream kind mismatched. please report bug"
-        );
-
-        let image = match format {
-            Format::Bgr8 => {
-                let channels = 3;
-
-                let sample_size = std::mem::size_of::<u8>();
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
-
-                let stride_in_samples = stride_in_bytes / sample_size;
-                debug_assert_eq!(
-                    raw_data.len(),
-                    stride_in_samples * height,
-                    "please report bug"
-                );
-                debug_assert!(width * channels <= stride_in_samples, "please report bug");
-
-                let flat = FlatSamples {
-                    samples: raw_data,
-                    layout: SampleLayout {
-                        channels: channels as u8,
-                        width: width as u32,
-                        height: height as u32,
-                        channel_stride: 1,
-                        width_stride: channels,
-                        height_stride: stride_in_samples,
-                    },
-                    color_hint: Some(ColorType::Bgr8),
-                };
-                let image = flat.try_into_buffer().unwrap();
-                ColorImage::Bgr8(image)
-            }
-            Format::Bgra8 => {
-                let channels = 4;
-
-                let sample_size = std::mem::size_of::<u8>();
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
-
-                let stride_in_samples = stride_in_bytes / sample_size;
-                debug_assert_eq!(
-                    raw_data.len(),
-                    stride_in_samples * height,
-                    "please report bug"
-                );
-                debug_assert!(width * channels <= stride_in_samples, "please report bug");
-
-                let flat = FlatSamples {
-                    samples: raw_data,
-                    layout: SampleLayout {
-                        channels: channels as u8,
-                        width: width as u32,
-                        height: height as u32,
-                        channel_stride: 1,
-                        width_stride: channels,
-                        height_stride: stride_in_samples,
-                    },
-                    color_hint: Some(ColorType::Bgra8),
-                };
-                let image = flat.try_into_buffer().unwrap();
-                ColorImage::Bgra8(image)
-            }
-            Format::Rgb8 => {
-                let channels = 3;
-
-                let sample_size = std::mem::size_of::<u8>();
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
-
-                let stride_in_samples = stride_in_bytes / sample_size;
-                debug_assert_eq!(
-                    raw_data.len(),
-                    stride_in_samples * height,
-                    "please report bug"
-                );
-                debug_assert!(width * channels <= stride_in_samples, "please report bug");
-
-                let flat = FlatSamples {
-                    samples: raw_data,
-                    layout: SampleLayout {
-                        channels: channels as u8,
-                        width: width as u32,
-                        height: height as u32,
-                        channel_stride: 1,
-                        width_stride: channels,
-                        height_stride: stride_in_samples,
-                    },
-                    color_hint: Some(ColorType::Rgb8),
-                };
-                let image = flat.try_into_buffer().unwrap();
-                ColorImage::Rgb8(image)
-            }
-            Format::Rgba8 => {
-                let channels = 4;
-
-                let sample_size = std::mem::size_of::<u8>();
-                debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
-
-                let stride_in_samples = stride_in_bytes / sample_size;
-                debug_assert_eq!(
-                    raw_data.len(),
-                    stride_in_samples * height,
-                    "please report bug"
-                );
-                debug_assert!(width * channels <= stride_in_samples, "please report bug");
-
-                let flat = FlatSamples {
-                    samples: raw_data,
-                    layout: SampleLayout {
-                        channels: channels as u8,
-                        width: width as u32,
-                        height: height as u32,
-                        channel_stride: 1,
-                        width_stride: channels,
-                        height_stride: stride_in_samples,
-                    },
-                    color_hint: Some(ColorType::Rgba8),
-                };
-                let image = flat.try_into_buffer().unwrap();
-                ColorImage::Rgba8(image)
-            }
-            _ => unreachable!("unsupported format. please report bug"),
-        };
-
-        Ok(image)
-    }
-}
-
 impl Frame<marker::Pose> {
     /// Gets the pose data.
     pub fn pose(&self) -> RsResult<PoseData> {
@@ -575,20 +669,6 @@ impl Frame<marker::Pose> {
 
         let pose = PoseData(pose_data);
         Ok(pose)
-    }
-}
-
-impl Frame<marker::Disparity> {
-    pub fn baseline(&self) -> RsResult<f32> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Ok(baseline)
-        }
     }
 }
 
