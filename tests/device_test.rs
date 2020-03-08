@@ -1,3 +1,5 @@
+#![cfg(feature = "device-test")]
+
 use failure::Fallible;
 use image::{DynamicImage, ImageFormat};
 use lazy_static::lazy_static;
