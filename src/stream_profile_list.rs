@@ -4,7 +4,7 @@ use crate::{
     error::{ErrorChecker, Result as RsResult},
     stream_profile::{marker as stream_marker, StreamProfile},
 };
-use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
+use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// An iterable list of streams.
 #[derive(Debug)]
@@ -56,8 +56,8 @@ impl StreamProfileList {
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_stream_profile_list> {
-        let ptr = std::mem::replace(&mut self.ptr, { MaybeUninit::uninit().assume_init() });
+    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_stream_profile_list> {
+        let ptr = self.ptr.clone();
         std::mem::forget(self);
         ptr
     }

@@ -7,7 +7,7 @@ use crate::{
     processing_block_list::ProcessingBlockList,
     stream_profile_list::StreamProfileList,
 };
-use std::{ffi::CStr, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
+use std::{ffi::CStr, marker::PhantomData, ptr::NonNull};
 
 /// Marker traits and types for [Sensor].
 pub mod marker {
@@ -272,8 +272,8 @@ where
         Ok(val != 0)
     }
 
-    pub(crate) unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_sensor> {
-        let ptr = std::mem::replace(&mut self.ptr, MaybeUninit::uninit().assume_init());
+    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_sensor> {
+        let ptr = self.ptr.clone();
         std::mem::forget(self);
         ptr
     }

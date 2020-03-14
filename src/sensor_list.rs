@@ -4,7 +4,7 @@ use crate::{
     error::{ErrorChecker, Result as RsResult},
     sensor::{marker as sensor_marker, Sensor},
 };
-use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
+use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// An iterable list of sensors.
 #[derive(Debug)]
@@ -55,8 +55,8 @@ impl SensorList {
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_sensor_list> {
-        let ptr = std::mem::replace(&mut self.ptr, { MaybeUninit::uninit().assume_init() });
+    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_sensor_list> {
+        let ptr = self.ptr.clone();
         std::mem::forget(self);
         ptr
     }

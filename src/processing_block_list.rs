@@ -4,7 +4,7 @@ use crate::{
     error::{ErrorChecker, Result as RsResult},
     processing_block::{marker as processing_block_marker, ProcessingBlock},
 };
-use std::{iter::FusedIterator, mem::MaybeUninit, os::raw::c_int, ptr::NonNull};
+use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// The iterable list of [ProcessingBlock](ProcessingBlock)s.
 #[derive(Debug)]
@@ -49,8 +49,8 @@ impl ProcessingBlockList {
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_processing_block_list> {
-        let ptr = std::mem::replace(&mut self.ptr, { MaybeUninit::uninit().assume_init() });
+    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_processing_block_list> {
+        let ptr = self.ptr.clone();
         std::mem::forget(self);
         ptr
     }

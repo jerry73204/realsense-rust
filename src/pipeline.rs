@@ -288,7 +288,7 @@ where
 {
     unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
         // take fields without invoking drop()
-        let ptr = std::mem::replace(&mut self.ptr, { MaybeUninit::uninit().assume_init() });
+        let ptr = self.ptr.clone();
         let context = std::mem::replace(&mut self.context, { MaybeUninit::uninit().assume_init() });
         let state = std::mem::replace(&mut self.state, { MaybeUninit::uninit().assume_init() });
         std::mem::forget(self);

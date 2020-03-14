@@ -522,8 +522,8 @@ where
         self.ptr
     }
 
-    unsafe fn take(mut self) -> NonNull<realsense_sys::rs2_frame> {
-        let ptr = std::mem::replace(&mut self.ptr, MaybeUninit::uninit().assume_init());
+    unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame> {
+        let ptr = self.ptr.clone();
         std::mem::forget(self);
         ptr
     }

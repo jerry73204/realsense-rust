@@ -162,8 +162,8 @@ where
         }
     }
 
-    pub(crate) unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_stream_profile>, bool) {
-        let ptr = std::mem::replace(&mut self.ptr, MaybeUninit::uninit().assume_init());
+    pub(crate) unsafe fn take(self) -> (NonNull<realsense_sys::rs2_stream_profile>, bool) {
+        let ptr = self.ptr.clone();
         let from_clone = self.from_clone;
         std::mem::forget(self);
         (ptr, from_clone)
