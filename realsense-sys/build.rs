@@ -13,6 +13,7 @@ fn main() -> Fallible<()> {
     #[cfg(feature = "buildtime-bindgen")]
     {
         // Probe libary
+        let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
         let library = probe_library("realsense2")?;
 
         // Verify version
@@ -43,6 +44,7 @@ fn main() -> Fallible<()> {
         );
 
         let bindings = bindgen::Builder::default()
+            .header(manifest_dir.join("wrapper.h").to_str().unwrap())
             .header(include_dir.join("rs.h").to_str().unwrap())
             .header(
                 include_dir
@@ -59,6 +61,10 @@ fn main() -> Fallible<()> {
                     .unwrap(),
             )
             .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
+            .whitelist_var("RS2_.*")
+            .whitelist_type("rs2_.*")
+            .whitelist_function("rs2_.*")
+            .whitelist_function("_rs2_.*")
             .generate()
             .expect("Unable to generate bindings");
 
