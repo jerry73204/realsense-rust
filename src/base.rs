@@ -2,7 +2,7 @@
 
 use crate::kind::{Format, StreamKind};
 use image::{Bgr, Bgra, ConvertBuffer, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
-use nalgebra::{Quaternion, Translation3, Unit, UnitQuaternion, Vector3};
+use nalgebra::{Isometry3, MatrixMN, Quaternion, Translation3, Unit, UnitQuaternion, Vector3, U3};
 use std::{
     convert::{AsMut, AsRef},
     ops::{Deref, DerefMut},
@@ -11,6 +11,117 @@ use std::{
 
 pub const DEFAULT_TIMEOUT: Duration =
     Duration::from_millis(realsense_sys::RS2_DEFAULT_TIMEOUT as u64);
+
+/// The intrinsic parameters for motion devices.
+pub struct MotionIntrinsics(pub realsense_sys::rs2_motion_device_intrinsic);
+
+impl Deref for MotionIntrinsics {
+    type Target = realsense_sys::rs2_motion_device_intrinsic;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for MotionIntrinsics {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl AsRef<realsense_sys::rs2_motion_device_intrinsic> for MotionIntrinsics {
+    fn as_ref(&self) -> &realsense_sys::rs2_motion_device_intrinsic {
+        &self.0
+    }
+}
+
+impl AsMut<realsense_sys::rs2_motion_device_intrinsic> for MotionIntrinsics {
+    fn as_mut(&mut self) -> &mut realsense_sys::rs2_motion_device_intrinsic {
+        &mut self.0
+    }
+}
+
+unsafe impl Send for MotionIntrinsics {}
+unsafe impl Sync for MotionIntrinsics {}
+
+/// The intrinsic parameters of stream.
+pub struct Intrinsics(pub realsense_sys::rs2_intrinsics);
+
+impl Deref for Intrinsics {
+    type Target = realsense_sys::rs2_intrinsics;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Intrinsics {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl AsRef<realsense_sys::rs2_intrinsics> for Intrinsics {
+    fn as_ref(&self) -> &realsense_sys::rs2_intrinsics {
+        &self.0
+    }
+}
+
+impl AsMut<realsense_sys::rs2_intrinsics> for Intrinsics {
+    fn as_mut(&mut self) -> &mut realsense_sys::rs2_intrinsics {
+        &mut self.0
+    }
+}
+
+unsafe impl Send for Intrinsics {}
+unsafe impl Sync for Intrinsics {}
+
+/// The extrinsic parameters of stream.
+pub struct Extrinsics(pub realsense_sys::rs2_extrinsics);
+
+impl Extrinsics {
+    pub fn to_isometry(&self) -> Isometry3<f32> {
+        let rotation = {
+            let matrix =
+                MatrixMN::<f32, U3, U3>::from_iterator(self.0.rotation.iter().map(|val| *val));
+            UnitQuaternion::from_matrix(&matrix)
+        };
+        let translation = {
+            let [x, y, z] = self.0.translation;
+            Translation3::new(x, y, z)
+        };
+        Isometry3::from_parts(translation, rotation)
+    }
+}
+
+impl Deref for Extrinsics {
+    type Target = realsense_sys::rs2_extrinsics;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Extrinsics {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl AsRef<realsense_sys::rs2_extrinsics> for Extrinsics {
+    fn as_ref(&self) -> &realsense_sys::rs2_extrinsics {
+        &self.0
+    }
+}
+
+impl AsMut<realsense_sys::rs2_extrinsics> for Extrinsics {
+    fn as_mut(&mut self) -> &mut realsense_sys::rs2_extrinsics {
+        &mut self.0
+    }
+}
+
+unsafe impl Send for Extrinsics {}
+unsafe impl Sync for Extrinsics {}
 
 /// Represents a pose detected by sensor.
 #[derive(Debug)]

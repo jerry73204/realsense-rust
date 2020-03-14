@@ -1,22 +1,78 @@
 //! Defines the profile type of streams.
 
 use crate::{
-    base::{Resolution, StreamProfileData},
+    base::{Extrinsics, Intrinsics, MotionIntrinsics, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, StreamKind},
 };
-use nalgebra::{Isometry3, MatrixMN, Translation3, UnitQuaternion, U3};
 use num_traits::FromPrimitive;
-use std::{borrow::Borrow, mem::MaybeUninit, ptr::NonNull};
+use std::{borrow::Borrow, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
+
+/// Marker traits and types for [StreamProfile].
+pub mod marker {
+    use super::*;
+
+    /// The marker traits of all kinds of StreamProfile.
+    pub trait StreamProfileKind {}
+
+    /// The marker traits of all kinds of StreamProfile except [Any](Any).
+    pub trait NonAnyStreamProfileKind
+    where
+        Self: StreamProfileKind,
+    {
+        const EXTENSION: Extension;
+    }
+
+    #[derive(Debug)]
+    pub struct Any;
+    impl StreamProfileKind for Any {}
+
+    #[derive(Debug)]
+    pub struct Video;
+    impl StreamProfileKind for Video {}
+    impl NonAnyStreamProfileKind for Video {
+        const EXTENSION: Extension = Extension::VideoProfile;
+    }
+
+    #[derive(Debug)]
+    pub struct Motion;
+    impl StreamProfileKind for Motion {}
+    impl NonAnyStreamProfileKind for Motion {
+        const EXTENSION: Extension = Extension::MotionProfile;
+    }
+
+    #[derive(Debug)]
+    pub struct Pose;
+    impl StreamProfileKind for Pose {}
+    impl NonAnyStreamProfileKind for Pose {
+        const EXTENSION: Extension = Extension::PoseProfile;
+    }
+}
+
+/// The enumeration of extended stream profile type returned by [StreamProfile::try_extend](StreamProfile::try_extend).
+#[derive(Debug)]
+pub enum ExtendedStreamProfile {
+    Video(StreamProfile<marker::Video>),
+    Motion(StreamProfile<marker::Motion>),
+    Pose(StreamProfile<marker::Pose>),
+    Other(StreamProfile<marker::Any>),
+}
 
 /// The profile of stream.
 #[derive(Debug)]
-pub struct StreamProfile {
+pub struct StreamProfile<Kind>
+where
+    Kind: marker::StreamProfileKind,
+{
     ptr: NonNull<realsense_sys::rs2_stream_profile>,
     from_clone: bool,
+    _phantom: PhantomData<Kind>,
 }
 
-impl StreamProfile {
+impl<Kind> StreamProfile<Kind>
+where
+    Kind: marker::StreamProfileKind,
+{
     /// Check whether the profile is default or not.
     pub fn is_default(&self) -> RsResult<bool> {
         unsafe {
@@ -28,42 +84,6 @@ impl StreamProfile {
             checker.check()?;
             Ok(val != 0)
         }
-    }
-
-    /// Gets the resolution of stream.
-    pub fn resolution(&self) -> RsResult<Resolution> {
-        let mut width = MaybeUninit::uninit();
-        let mut height = MaybeUninit::uninit();
-        let resolution = unsafe {
-            let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_get_video_stream_resolution(
-                self.ptr.as_ptr(),
-                width.as_mut_ptr(),
-                height.as_mut_ptr(),
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            let resolution = Resolution {
-                width: width.assume_init() as usize,
-                height: height.assume_init() as usize,
-            };
-            resolution
-        };
-        Ok(resolution)
-    }
-
-    /// Check if the stream is extendable to the given extension.
-    pub fn is_extendable_to(&mut self, extension: Extension) -> RsResult<()> {
-        unsafe {
-            let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_stream_profile_is(
-                self.ptr.as_ptr(),
-                extension as realsense_sys::rs2_extension,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-        }
-        Ok(())
     }
 
     /// Gets the attributes of stream.
@@ -104,12 +124,13 @@ impl StreamProfile {
     // }
 
     /// Compute the extrinsic parameters to another stream.
-    pub fn extrinsics_to<P>(&self, other: P) -> RsResult<Isometry3<f32>>
+    pub fn extrinsics_to<P, K>(&self, other: P) -> RsResult<Extrinsics>
     where
-        P: Borrow<StreamProfile>,
+        P: Borrow<StreamProfile<K>>,
+        K: marker::StreamProfileKind,
     {
-        let mut extrinsics = MaybeUninit::<realsense_sys::rs2_extrinsics>::uninit();
-        let (raw_rotation, raw_translation) = unsafe {
+        unsafe {
+            let mut extrinsics = MaybeUninit::<realsense_sys::rs2_extrinsics>::uninit();
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_get_extrinsics(
                 self.ptr.as_ptr(),
@@ -118,37 +139,149 @@ impl StreamProfile {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
+            Ok(Extrinsics(extrinsics.assume_init()))
+        }
+    }
 
-            let realsense_sys::rs2_extrinsics {
-                rotation,
-                translation,
-            } = extrinsics.assume_init();
-            (rotation, translation)
-        };
-
-        let rotation = {
-            let matrix =
-                MatrixMN::<f32, U3, U3>::from_iterator(raw_rotation.iter().map(|val| *val));
-            UnitQuaternion::from_matrix(&matrix)
-        };
-
-        let translation =
-            { Translation3::new(raw_translation[0], raw_translation[1], raw_translation[2]) };
-
-        let isometry = Isometry3::from_parts(translation, rotation);
-
-        Ok(isometry)
+    pub(crate) unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_stream_profile>, bool) {
+        let ptr = std::mem::replace(&mut self.ptr, MaybeUninit::uninit().assume_init());
+        let from_clone = self.from_clone;
+        std::mem::forget(self);
+        (ptr, from_clone)
     }
 
     pub(crate) unsafe fn from_parts(
         ptr: NonNull<realsense_sys::rs2_stream_profile>,
         from_clone: bool,
     ) -> Self {
-        Self { ptr, from_clone }
+        Self {
+            ptr,
+            from_clone,
+            _phantom: PhantomData,
+        }
     }
 }
 
-impl Drop for StreamProfile {
+impl StreamProfile<marker::Any> {
+    /// Check if the stream is extendable to the given extension.
+    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    where
+        Kind: marker::NonAnyStreamProfileKind,
+    {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let val = realsense_sys::rs2_stream_profile_is(
+                self.ptr.as_ptr(),
+                Kind::EXTENSION as realsense_sys::rs2_extension,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(val != 0)
+        }
+    }
+
+    /// Extends to a specific stream profile subtype.
+    pub fn try_extend_to<Kind>(self) -> RsResult<Result<StreamProfile<Kind>, Self>>
+    where
+        Kind: marker::NonAnyStreamProfileKind,
+    {
+        if self.is_extendable_to::<Kind>()? {
+            let (ptr, from_clone) = unsafe { self.take() };
+            let profile = StreamProfile {
+                ptr,
+                from_clone,
+                _phantom: PhantomData,
+            };
+            Ok(Ok(profile))
+        } else {
+            Ok(Err(self))
+        }
+    }
+
+    /// Extends to one of a stream profile subtype.
+    pub fn try_extend(self) -> RsResult<ExtendedStreamProfile> {
+        let profile_any = self;
+
+        let profile_any = match profile_any.try_extend_to::<marker::Video>()? {
+            Ok(profile) => return Ok(ExtendedStreamProfile::Video(profile)),
+            Err(profile) => profile,
+        };
+
+        let profile_any = match profile_any.try_extend_to::<marker::Motion>()? {
+            Ok(profile) => return Ok(ExtendedStreamProfile::Motion(profile)),
+            Err(profile) => profile,
+        };
+
+        let profile_any = match profile_any.try_extend_to::<marker::Pose>()? {
+            Ok(profile) => return Ok(ExtendedStreamProfile::Pose(profile)),
+            Err(profile) => profile,
+        };
+
+        Ok(ExtendedStreamProfile::Other(profile_any))
+    }
+}
+
+impl StreamProfile<marker::Video> {
+    /// Gets the resolution of stream.
+    pub fn resolution(&self) -> RsResult<Resolution> {
+        let mut width = MaybeUninit::uninit();
+        let mut height = MaybeUninit::uninit();
+        let resolution = unsafe {
+            let mut checker = ErrorChecker::new();
+            realsense_sys::rs2_get_video_stream_resolution(
+                self.ptr.as_ptr(),
+                width.as_mut_ptr(),
+                height.as_mut_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            let resolution = Resolution {
+                width: width.assume_init() as usize,
+                height: height.assume_init() as usize,
+            };
+            resolution
+        };
+        Ok(resolution)
+    }
+
+    /// Gets the intrinsic parameters.
+    pub fn intrinsics(&self) -> RsResult<Intrinsics> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let mut intrinsics = MaybeUninit::<realsense_sys::rs2_intrinsics>::uninit();
+            realsense_sys::rs2_get_video_stream_intrinsics(
+                self.ptr.as_ptr(),
+                intrinsics.as_mut_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(Intrinsics(intrinsics.assume_init()))
+        }
+    }
+}
+
+impl StreamProfile<marker::Motion> {
+    /// Gets the motion intrinsic parameters.
+    pub fn motion_intrinsics(&self) -> RsResult<MotionIntrinsics> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            let mut intrinsics =
+                MaybeUninit::<realsense_sys::rs2_motion_device_intrinsic>::uninit();
+            realsense_sys::rs2_get_motion_intrinsics(
+                self.ptr.as_ptr(),
+                intrinsics.as_mut_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(MotionIntrinsics(intrinsics.assume_init()))
+        }
+    }
+}
+
+impl<Kind> Drop for StreamProfile<Kind>
+where
+    Kind: marker::StreamProfileKind,
+{
     fn drop(&mut self) {
         unsafe {
             if self.from_clone {
@@ -158,4 +291,4 @@ impl Drop for StreamProfile {
     }
 }
 
-unsafe impl Send for StreamProfile {}
+unsafe impl<Kind> Send for StreamProfile<Kind> where Kind: marker::StreamProfileKind {}
