@@ -9,6 +9,7 @@ use crate::{
 };
 use std::{ffi::CStr, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
 
+/// Marker traits and types for [Sensor].
 pub mod marker {
     use super::*;
 
@@ -20,7 +21,7 @@ pub mod marker {
     where
         Self: SensorKind,
     {
-        const TYPE: Extension;
+        const EXTENSION: Extension;
     }
 
     #[derive(Debug)]
@@ -31,63 +32,63 @@ pub mod marker {
     pub struct Tm2;
     impl SensorKind for Tm2 {}
     impl NonAnySensorKind for Tm2 {
-        const TYPE: Extension = Extension::Tm2Sensor;
+        const EXTENSION: Extension = Extension::Tm2Sensor;
     }
 
     #[derive(Debug)]
     pub struct Pose;
     impl SensorKind for Pose {}
     impl NonAnySensorKind for Pose {
-        const TYPE: Extension = Extension::PoseSensor;
+        const EXTENSION: Extension = Extension::PoseSensor;
     }
 
     #[derive(Debug)]
     pub struct Color;
     impl SensorKind for Color {}
     impl NonAnySensorKind for Color {
-        const TYPE: Extension = Extension::ColorSensor;
+        const EXTENSION: Extension = Extension::ColorSensor;
     }
 
     #[derive(Debug)]
     pub struct Depth;
     impl SensorKind for Depth {}
     impl NonAnySensorKind for Depth {
-        const TYPE: Extension = Extension::DepthSensor;
+        const EXTENSION: Extension = Extension::DepthSensor;
     }
 
     #[derive(Debug)]
     pub struct Motion;
     impl SensorKind for Motion {}
     impl NonAnySensorKind for Motion {
-        const TYPE: Extension = Extension::MotionSensor;
+        const EXTENSION: Extension = Extension::MotionSensor;
     }
 
     #[derive(Debug)]
     pub struct FishEye;
     impl SensorKind for FishEye {}
     impl NonAnySensorKind for FishEye {
-        const TYPE: Extension = Extension::FishEyeSensor;
+        const EXTENSION: Extension = Extension::FishEyeSensor;
     }
 
     #[derive(Debug)]
     pub struct Software;
     impl SensorKind for Software {}
     impl NonAnySensorKind for Software {
-        const TYPE: Extension = Extension::SoftwareSensor;
+        const EXTENSION: Extension = Extension::SoftwareSensor;
     }
 
     #[derive(Debug)]
     pub struct L500Depth;
     impl SensorKind for L500Depth {}
     impl NonAnySensorKind for L500Depth {
-        const TYPE: Extension = Extension::L500DepthSensor;
+        const EXTENSION: Extension = Extension::L500DepthSensor;
     }
 
     #[derive(Debug)]
     pub struct DepthStereo;
     impl SensorKind for DepthStereo {}
     impl NonAnySensorKind for DepthStereo {
-        const TYPE: Extension = Extension::DepthStereoSensor;
+        const EXTENSION: Extension = Extension::DepthStereoSensor;
     }
 }
 
@@ -286,12 +287,15 @@ where
 }
 
 impl Sensor<marker::Any> {
-    pub fn is_extendable_to(&self, extension: Extension) -> RsResult<bool> {
+    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    where
+        Kind: marker::NonAnySensorKind,
+    {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_is_sensor_extendable_to(
                 self.ptr.as_ptr(),
-                extension as realsense_sys::rs2_extension,
+                Kind::EXTENSION as realsense_sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -300,11 +304,11 @@ impl Sensor<marker::Any> {
     }
 
     /// Extends to a specific sensor subtype.
-    pub fn try_extend_to<NewKind>(self) -> RsResult<Result<Sensor<NewKind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> RsResult<Result<Sensor<Kind>, Self>>
     where
-        NewKind: marker::NonAnySensorKind,
+        Kind: marker::NonAnySensorKind,
     {
-        if self.is_extendable_to(NewKind::TYPE)? {
+        if self.is_extendable_to::<Kind>()? {
             let ptr = unsafe { self.take() };
             let sensor = Sensor {
                 ptr,

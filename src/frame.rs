@@ -5,13 +5,12 @@ use crate::{
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
-    stream_profile::StreamProfile,
+    stream_profile::{marker as stream_marker, StreamProfile},
 };
 use image::{
     flat::{FlatSamples, SampleLayout},
     ColorType,
 };
-use nalgebra::Vector3;
 use num_traits::FromPrimitive;
 use safe_transmute::guard::PedanticGuard;
 use std::{
@@ -30,7 +29,7 @@ pub mod marker {
     where
         Self: FrameKind,
     {
-        const TYPE: Extension;
+        const EXTENSION: Extension;
     }
 
     #[derive(Debug)]
@@ -38,7 +37,7 @@ pub mod marker {
 
     impl FrameKind for Composite {}
     impl NonAnyFrameKind for Composite {
-        const TYPE: Extension = Extension::CompositeFrame;
+        const EXTENSION: Extension = Extension::CompositeFrame;
     }
 
     #[derive(Debug)]
@@ -51,7 +50,7 @@ pub mod marker {
 
     impl FrameKind for Video {}
     impl NonAnyFrameKind for Video {
-        const TYPE: Extension = Extension::VideoFrame;
+        const EXTENSION: Extension = Extension::VideoFrame;
     }
 
     #[derive(Debug)]
@@ -59,7 +58,7 @@ pub mod marker {
 
     impl FrameKind for Motion {}
     impl NonAnyFrameKind for Motion {
-        const TYPE: Extension = Extension::MotionFrame;
+        const EXTENSION: Extension = Extension::MotionFrame;
     }
 
     #[derive(Debug)]
@@ -67,7 +66,7 @@ pub mod marker {
 
     impl FrameKind for Depth {}
     impl NonAnyFrameKind for Depth {
-        const TYPE: Extension = Extension::DepthFrame;
+        const EXTENSION: Extension = Extension::DepthFrame;
     }
 
     #[derive(Debug)]
@@ -75,7 +74,7 @@ pub mod marker {
 
     impl FrameKind for Disparity {}
     impl NonAnyFrameKind for Disparity {
-        const TYPE: Extension = Extension::DisparityFrame;
+        const EXTENSION: Extension = Extension::DisparityFrame;
     }
 
     #[derive(Debug)]
@@ -83,7 +82,7 @@ pub mod marker {
 
     impl FrameKind for Pose {}
     impl NonAnyFrameKind for Pose {
-        const TYPE: Extension = Extension::PoseFrame;
+        const EXTENSION: Extension = Extension::PoseFrame;
     }
 
     #[derive(Debug)]
@@ -91,7 +90,7 @@ pub mod marker {
 
     impl FrameKind for Points {}
     impl NonAnyFrameKind for Points {
-        const TYPE: Extension = Extension::Points;
+        const EXTENSION: Extension = Extension::Points;
     }
 }
 
@@ -189,7 +188,7 @@ pub trait GenericFrame {
     }
 
     /// Gets the relating stream profile.
-    fn stream_profile(&self) -> RsResult<StreamProfile> {
+    fn stream_profile(&self) -> RsResult<StreamProfile<stream_marker::Any>> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_frame_stream_profile(
@@ -548,12 +547,15 @@ impl DisparityFrame for Frame<marker::Disparity> {}
 impl<Kind> Frame<Kind> where Kind: marker::FrameKind {}
 
 impl Frame<marker::Any> {
-    pub fn is_extendable_to(&self, extension: Extension) -> RsResult<bool> {
+    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    where
+        Kind: marker::NonAnyFrameKind,
+    {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_is_frame_extendable_to(
                 self.ptr.as_ptr(),
-                extension as realsense_sys::rs2_extension,
+                Kind::EXTENSION as realsense_sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -566,7 +568,7 @@ impl Frame<marker::Any> {
         Kind: marker::NonAnyFrameKind,
     {
         unsafe {
-            let is_extendable = self.is_extendable_to(Kind::TYPE)?;
+            let is_extendable = self.is_extendable_to::<Kind>()?;
             if is_extendable {
                 let ptr = self.take();
                 let frame = Frame {
@@ -738,13 +740,12 @@ impl Frame<marker::Points> {
 
 impl Frame<marker::Motion> {
     /// Gets motion data.
-    pub fn motion_data(&self) -> RsResult<Vector3<f32>> {
+    pub fn motion(&self) -> RsResult<[f32; 3]> {
         let slice = safe_transmute::transmute_many::<f32, PedanticGuard>(self.data()?).unwrap();
-        let vector = match slice {
-            &[x, y, z] => Vector3::new(x, y, z),
+        match *slice {
+            [x, y, z] => Ok([x, y, z]),
             _ => unreachable!("please report bug"),
-        };
-        Ok(vector)
+        }
     }
 }
 
