@@ -1,7 +1,9 @@
 //! Common types and functions.
 
 use crate::kind::{Format, StreamKind};
+#[cfg(feature = "with-image")]
 use image::{Bgr, Bgra, ConvertBuffer, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
+#[cfg(feature = "with-nalgebra")]
 use nalgebra::{Isometry3, MatrixMN, Quaternion, Translation3, Unit, UnitQuaternion, Vector3, U3};
 use std::{
     convert::{AsMut, AsRef},
@@ -80,6 +82,7 @@ unsafe impl Sync for Intrinsics {}
 pub struct Extrinsics(pub realsense_sys::rs2_extrinsics);
 
 impl Extrinsics {
+    #[cfg(feature = "with-nalgebra")]
     pub fn to_isometry(&self) -> Isometry3<f32> {
         let rotation = {
             let matrix =
@@ -128,31 +131,37 @@ unsafe impl Sync for Extrinsics {}
 pub struct PoseData(pub realsense_sys::rs2_pose);
 
 impl PoseData {
+    #[cfg(feature = "with-nalgebra")]
     pub fn translation(&self) -> Translation3<f32> {
         let realsense_sys::rs2_vector { x, y, z } = self.0.translation;
         Translation3::new(x, y, z)
     }
 
+    #[cfg(feature = "with-nalgebra")]
     pub fn velocity(&self) -> Vector3<f32> {
         let realsense_sys::rs2_vector { x, y, z } = self.0.velocity;
         Vector3::new(x, y, z)
     }
 
+    #[cfg(feature = "with-nalgebra")]
     pub fn acceleration(&self) -> Vector3<f32> {
         let realsense_sys::rs2_vector { x, y, z } = self.0.acceleration;
         Vector3::new(x, y, z)
     }
 
+    #[cfg(feature = "with-nalgebra")]
     pub fn rotation(&self) -> UnitQuaternion<f32> {
         let realsense_sys::rs2_quaternion { x, y, z, w } = self.0.rotation;
         Unit::new_unchecked(Quaternion::new(w, x, z, y))
     }
 
+    #[cfg(feature = "with-nalgebra")]
     pub fn angular_velocity(&self) -> Vector3<f32> {
         let realsense_sys::rs2_vector { x, y, z } = self.0.angular_velocity;
         Vector3::new(x, y, z)
     }
 
+    #[cfg(feature = "with-nalgebra")]
     pub fn angular_acceleration(&self) -> Vector3<f32> {
         let realsense_sys::rs2_vector { x, y, z } = self.0.angular_acceleration;
         Vector3::new(x, y, z)
@@ -208,6 +217,7 @@ pub struct Resolution {
 /// This is a wrapper of various [ImageBuffer](image::ImageBuffer) variants.
 /// It pixel data is stored in slice for better performance.
 /// The type implements `Into<DynamicImage>` to create owned type.
+#[cfg(feature = "with-image")]
 #[derive(Debug, Clone)]
 pub enum Rs2Image<'a> {
     Bgr8(ImageBuffer<Bgr<u8>, &'a [u8]>),
@@ -217,6 +227,7 @@ pub enum Rs2Image<'a> {
     Luma16(ImageBuffer<Luma<u16>, &'a [u16]>),
 }
 
+#[cfg(feature = "with-image")]
 impl<'a> From<Rs2Image<'a>> for DynamicImage {
     fn from(from: Rs2Image<'a>) -> DynamicImage {
         match from {

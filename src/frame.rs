@@ -1,12 +1,15 @@
 //! Defines the frame type including sensor data.
 
+#[cfg(feature = "with-image")]
+use crate::base::Rs2Image;
 use crate::{
-    base::{PoseData, Resolution, Rs2Image, StreamProfileData},
+    base::{PoseData, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::{marker as stream_marker, StreamProfile},
 };
+#[cfg(feature = "with-image")]
 use image::{
     flat::{FlatSamples, SampleLayout},
     ColorType,
@@ -270,6 +273,7 @@ where
     }
 
     /// Gets color image buffer referencing underlying raw data.
+    #[cfg(feature = "with-image")]
     fn image(&self) -> RsResult<Rs2Image> {
         let StreamProfileData { format, .. } = self.stream_profile()?.get_data()?;
         let raw_data = self.data()?;

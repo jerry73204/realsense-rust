@@ -1,3 +1,5 @@
+#![cfg(feature = "with-image")]
+
 use failure::Fallible;
 use image::{DynamicImage, ImageFormat};
 use realsense_rust::{

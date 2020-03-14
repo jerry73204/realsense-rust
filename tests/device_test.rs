@@ -1,3 +1,4 @@
+#![cfg(feature = "with-image")]
 #![cfg(feature = "device-test")]
 
 use failure::Fallible;

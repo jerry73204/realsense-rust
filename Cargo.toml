@@ -13,9 +13,9 @@ repository = "https://github.com/jerry73204/realsense-rust"
 realsense-sys = { version = "^0.2.1", path = "realsense-sys" }
 num-derive = "^0.3.0"
 num-traits = "^0.2.11"
-nalgebra = "^0.19.0"
+nalgebra = { version = "^0.19.0", optional = true }
 futures = "^0.3.4"
-image = "^0.23.0"
+image = { version = "^0.23.0", optional = true }
 safe-transmute = "^0.11.0-rc.2"
 
 [dev-dependencies]
@@ -24,5 +24,8 @@ failure = "0.1.6"
 lazy_static = "^1.4.0"
 
 [features]
+default = ["with-nalgebra", "with-image"]
 buildtime-bindgen = ["realsense-sys/buildtime-bindgen"]
 device-test = []
+with-nalgebra = ["nalgebra"]
+with-image = ["image"]
