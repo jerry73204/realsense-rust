@@ -123,8 +123,8 @@ where
     //     todo!();
     // }
 
-    /// Compute the extrinsic parameters to another stream.
-    pub fn extrinsics_to<P, K>(&self, other: P) -> RsResult<Extrinsics>
+    /// Gets the extrinsic parameters to another stream.
+    pub fn get_extrinsics<P, K>(&self, to_stream: P) -> RsResult<Extrinsics>
     where
         P: Borrow<StreamProfile<K>>,
         K: marker::StreamProfileKind,
@@ -134,12 +134,31 @@ where
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_get_extrinsics(
                 self.ptr.as_ptr(),
-                other.borrow().ptr.as_ptr(),
+                to_stream.borrow().ptr.as_ptr(),
                 extrinsics.as_mut_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
             Ok(Extrinsics(extrinsics.assume_init()))
+        }
+    }
+
+    /// Sets the extrinsic parameters to another stream.
+    pub fn set_extrinsics<P, K>(&self, to_stream: P, extrinsics: Extrinsics) -> RsResult<()>
+    where
+        P: Borrow<StreamProfile<K>>,
+        K: marker::StreamProfileKind,
+    {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            realsense_sys::rs2_register_extrinsics(
+                self.ptr.as_ptr(),
+                to_stream.borrow().ptr.as_ptr(),
+                *extrinsics,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Ok(())
         }
     }
 
