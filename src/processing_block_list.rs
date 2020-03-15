@@ -23,7 +23,7 @@ impl ProcessingBlockList {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ProcessingBlock::from_ptr(NonNull::new(ptr).unwrap())
+            ProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap())?
         };
         Ok(block)
     }
@@ -93,7 +93,7 @@ impl Iterator for ProcessingBlockListIntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let block = unsafe {
+            let result = unsafe {
                 let mut checker = ErrorChecker::new();
                 let ptr = realsense_sys::rs2_get_processing_block(
                     self.ptr.as_ptr(),
@@ -101,12 +101,12 @@ impl Iterator for ProcessingBlockListIntoIter {
                     checker.inner_mut_ptr(),
                 );
                 match checker.check() {
-                    Ok(()) => ProcessingBlock::from_ptr(NonNull::new(ptr).unwrap()),
+                    Ok(()) => ProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap()),
                     Err(err) => return Some(Err(err)),
                 }
             };
             self.index += 1;
-            Some(Ok(block))
+            Some(result)
         } else {
             None
         }
