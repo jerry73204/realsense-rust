@@ -1,7 +1,8 @@
 //! Defines the queue type of frames.
 
 use crate::{
-    error::{ErrorChecker, Result as RsResult},
+    base::DEFAULT_TIMEOUT,
+    error::{Error as RsError, ErrorChecker, Result as RsResult},
     frame::{
         marker::{Any, FrameKind},
         Frame, GenericFrame,
@@ -10,13 +11,14 @@ use crate::{
 use std::{
     os::raw::{c_int, c_uint, c_void},
     ptr::NonNull,
+    sync::atomic::{AtomicPtr, Ordering},
     time::Duration,
 };
 
 /// The queue of frames.
 #[derive(Debug)]
 pub struct FrameQueue {
-    ptr: NonNull<realsense_sys::rs2_frame_queue>,
+    pub(crate) ptr: NonNull<realsense_sys::rs2_frame_queue>,
 }
 
 impl FrameQueue {
@@ -33,7 +35,7 @@ impl FrameQueue {
     }
 
     /// Push a frame to the queue.
-    pub fn push<Kind>(&mut self, frame: Frame<Kind>)
+    pub fn enqueue<Kind>(&mut self, frame: Frame<Kind>)
     where
         Kind: FrameKind,
     {
@@ -48,17 +50,58 @@ impl FrameQueue {
     /// Pops a frame from queue.
     ///
     /// The method blocks until a frame is available.
-    pub fn wait(&mut self, timeout: Duration) -> RsResult<Frame<Any>> {
-        let frame = unsafe {
+    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Any>> {
+        let timeout_ms = timeout.unwrap_or(DEFAULT_TIMEOUT).as_millis() as c_uint;
+
+        let frame = loop {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_wait_for_frame(
-                self.ptr.as_ptr(),
-                timeout.as_millis() as c_uint,
-                checker.inner_mut_ptr(),
-            );
-            checker.check()?;
-            Frame::from_ptr(NonNull::new(ptr).unwrap())
+            let ptr = unsafe {
+                realsense_sys::rs2_wait_for_frame(
+                    self.ptr.as_ptr(),
+                    timeout_ms,
+                    checker.inner_mut_ptr(),
+                )
+            };
+
+            match (timeout, checker.check()) {
+                (None, Err(RsError::Timeout(..))) => continue,
+                tuple @ _ => {
+                    let (_, result) = tuple;
+                    result?;
+                }
+            }
+
+            let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+            break frame;
         };
+        Ok(frame)
+    }
+
+    /// Wait for frame asynchronously. It is analogous to [FrameQueue::wait]
+    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Any>> {
+        let timeout_ms = timeout
+            .map(|duration| duration.as_millis() as c_uint)
+            .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        let queue_ptr = AtomicPtr::new(self.ptr.as_ptr());
+
+        std::thread::spawn(move || {
+            let func = || unsafe {
+                let mut checker = ErrorChecker::new();
+                let ptr = realsense_sys::rs2_wait_for_frame(
+                    queue_ptr.load(Ordering::SeqCst),
+                    timeout_ms,
+                    checker.inner_mut_ptr(),
+                );
+                checker.check()?;
+                let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
+                Ok(frame)
+            };
+            let result = func();
+            let _ = tx.send(result);
+        });
+
+        let frame = rx.await.unwrap()?;
         Ok(frame)
     }
 
@@ -83,7 +126,7 @@ impl FrameQueue {
         }
     }
 
-    pub(crate) fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame_queue>) -> Self {
+    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame_queue>) -> Self {
         Self { ptr }
     }
 }
