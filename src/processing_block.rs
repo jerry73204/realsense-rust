@@ -1,13 +1,14 @@
 //! Defines the processing block type.
 
 use crate::{
+    base::StreamProfileData,
     error::{ErrorChecker, Result as RsResult},
-    frame::{marker as frame_marker, Frame},
+    frame::{marker as frame_marker, ExtendedFrame, Frame, GenericFrame},
     frame_queue::FrameQueue,
-    kind::{Extension, StreamKind},
+    kind::{ColorScheme, Extension, HoleFillingMode, PersistenceControl, Rs2Option, StreamKind},
     options::ToOptions,
 };
-use std::{marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
+use std::{marker::PhantomData, mem::MaybeUninit, os::raw::c_uchar, ptr::NonNull};
 
 pub mod marker {
     use super::*;
@@ -189,8 +190,9 @@ where
         }
     }
 
-    pub(crate) unsafe fn new_from_ptr(
+    pub(crate) unsafe fn new_from_ptr_and_capacity(
         ptr: NonNull<realsense_sys::rs2_processing_block>,
+        capacity: usize,
     ) -> RsResult<Self> {
         let queue = FrameQueue::with_capacity(1)?;
 
@@ -211,6 +213,12 @@ where
             _phantom: PhantomData,
         };
         Ok(block)
+    }
+
+    pub(crate) unsafe fn new_from_ptr(
+        ptr: NonNull<realsense_sys::rs2_processing_block>,
+    ) -> RsResult<Self> {
+        Self::new_from_ptr_and_capacity(ptr, 1)
     }
 }
 
@@ -289,6 +297,37 @@ impl ProcessingBlock<marker::Any> {
     }
 }
 
+impl ProcessingBlock<marker::ThresholdFilter> {
+    pub fn create() -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_threshold(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+        Ok(processing_block)
+    }
+
+    pub fn with_options(min_dist: Option<f32>, max_dist: Option<f32>) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_threshold(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+
+        let options = processing_block.to_options()?;
+        if let Some(dist) = min_dist {
+            options[&Rs2Option::MinDistance].set_value(dist)?;
+        }
+        if let Some(dist) = max_dist {
+            options[&Rs2Option::MaxDistance].set_value(dist)?;
+        }
+
+        Ok(processing_block)
+    }
+}
+
 impl ProcessingBlock<marker::SpatialFilter> {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
@@ -297,6 +336,28 @@ impl ProcessingBlock<marker::SpatialFilter> {
             checker.check()?;
             Self::new_from_ptr(NonNull::new(ptr).unwrap())?
         };
+        Ok(processing_block)
+    }
+
+    pub fn with_options(
+        smooth_alpha: f32,
+        smooth_delta: f32,
+        magnitude: f32,
+        hole_fill: f32,
+    ) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+
+        let options = processing_block.to_options()?;
+        options[&Rs2Option::FilterSmoothAlpha].set_value(smooth_alpha)?;
+        options[&Rs2Option::FilterSmoothDelta].set_value(smooth_delta)?;
+        options[&Rs2Option::FilterMagnitude].set_value(magnitude)?;
+        options[&Rs2Option::HolesFill].set_value(hole_fill)?;
+
         Ok(processing_block)
     }
 }
@@ -311,6 +372,26 @@ impl ProcessingBlock<marker::TemporalFilter> {
         };
         Ok(processing_block)
     }
+
+    pub fn with_options(
+        smooth_alpha: f32,
+        smooth_delta: f32,
+        persistence_control: PersistenceControl,
+    ) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+
+        let options = processing_block.to_options()?;
+        options[&Rs2Option::HolesFill].set_value(persistence_control as usize as f32)?;
+        options[&Rs2Option::FilterSmoothAlpha].set_value(smooth_alpha)?;
+        options[&Rs2Option::FilterSmoothDelta].set_value(smooth_delta)?;
+
+        Ok(processing_block)
+    }
 }
 
 impl ProcessingBlock<marker::DecimationFilter> {
@@ -321,6 +402,20 @@ impl ProcessingBlock<marker::DecimationFilter> {
             checker.check()?;
             Self::new_from_ptr(NonNull::new(ptr).unwrap())?
         };
+        Ok(processing_block)
+    }
+
+    pub fn with_options(magnitude: f32) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_decimation_filter_block(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+
+        let options = processing_block.to_options()?;
+        options[&Rs2Option::FilterMagnitude].set_value(magnitude)?;
+
         Ok(processing_block)
     }
 }
@@ -334,6 +429,120 @@ impl ProcessingBlock<marker::HoleFillingFilter> {
             Self::new_from_ptr(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
+    }
+
+    pub fn with_options(mode: HoleFillingMode) -> RsResult<Self> {
+        let processing_block = Self::create()?;
+
+        let options = processing_block.to_options()?;
+        options[&Rs2Option::HolesFill].set_value(mode as usize as f32)?;
+
+        Ok(processing_block)
+    }
+}
+
+impl ProcessingBlock<marker::DisparityFilter> {
+    pub fn create() -> RsResult<Self> {
+        Self::with_options(true)
+    }
+
+    pub fn with_options(transform_to_disparity: bool) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_disparity_transform_block(
+                transform_to_disparity as c_uchar,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+        Ok(processing_block)
+    }
+}
+
+impl ProcessingBlock<marker::PointCloud> {
+    pub fn create() -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_pointcloud(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+        Ok(processing_block)
+    }
+
+    pub fn calculate(
+        &mut self,
+        depth_frame: Frame<frame_marker::Depth>,
+    ) -> RsResult<Frame<frame_marker::Points>> {
+        let frame_any = self.process(depth_frame)?;
+        match frame_any.try_extend()? {
+            ExtendedFrame::Points(points_frame) => Ok(points_frame),
+            ExtendedFrame::Composite(composite_frame) => {
+                for result in composite_frame.try_into_iter()? {
+                    let frame = result?;
+                    if let Ok(points_frame) = frame.try_extend_to::<frame_marker::Points>()? {
+                        return Ok(points_frame);
+                    }
+                }
+                unreachable!();
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn map_to(&mut self, color_frame: Frame<frame_marker::Video>) -> RsResult<()> {
+        let StreamProfileData {
+            stream,
+            format,
+            index,
+            ..
+        } = color_frame.stream_profile()?.get_data()?;
+        let options = self.to_options()?;
+        options[&Rs2Option::StreamFilter].set_value(stream as realsense_sys::rs2_stream as f32)?;
+        options[&Rs2Option::StreamFormatFilter]
+            .set_value(format as realsense_sys::rs2_format as f32)?;
+        options[&Rs2Option::StreamIndexFilter].set_value(index as f32)?;
+
+        self.process(color_frame)?;
+        Ok(())
+    }
+
+    pub async fn calculate_async(
+        &mut self,
+        depth_frame: Frame<frame_marker::Depth>,
+    ) -> RsResult<Frame<frame_marker::Points>> {
+        let frame_any = self.process_async(depth_frame).await?;
+        match frame_any.try_extend()? {
+            ExtendedFrame::Points(points_frame) => Ok(points_frame),
+            ExtendedFrame::Composite(composite_frame) => {
+                for result in composite_frame.try_into_iter()? {
+                    let frame = result?;
+                    if let Ok(points_frame) = frame.try_extend_to::<frame_marker::Points>()? {
+                        return Ok(points_frame);
+                    }
+                }
+                unreachable!();
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub async fn map_to_async(&mut self, color_frame: Frame<frame_marker::Video>) -> RsResult<()> {
+        let StreamProfileData {
+            stream,
+            format,
+            index,
+            ..
+        } = color_frame.stream_profile()?.get_data()?;
+        let options = self.to_options()?;
+        options[&Rs2Option::StreamFilter].set_value(stream as realsense_sys::rs2_stream as f32)?;
+        options[&Rs2Option::StreamFormatFilter]
+            .set_value(format as realsense_sys::rs2_format as f32)?;
+        options[&Rs2Option::StreamIndexFilter].set_value(index as f32)?;
+
+        self.process_async(color_frame).await?;
+        Ok(())
     }
 }
 
@@ -398,6 +607,29 @@ impl ProcessingBlock<marker::Colorizer> {
         };
         Ok(processing_block)
     }
+
+    pub fn with_options(color_scheme: ColorScheme) -> RsResult<Self> {
+        let processing_block = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_create_colorizer(checker.inner_mut_ptr());
+            checker.check()?;
+            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+        };
+
+        let options = processing_block.to_options()?;
+        options[&Rs2Option::ColorScheme].set_value(color_scheme as usize as f32)?;
+
+        Ok(processing_block)
+    }
+
+    pub fn colorize(
+        &mut self,
+        depth_frame: Frame<frame_marker::Depth>,
+    ) -> RsResult<Frame<frame_marker::Video>> {
+        let frame_any = self.process(depth_frame)?;
+        let color_frame = frame_any.try_extend_to::<frame_marker::Video>()?.unwrap();
+        Ok(color_frame)
+    }
 }
 
 impl ProcessingBlock<marker::HuffmanDepthDecompress> {
@@ -425,14 +657,14 @@ impl ProcessingBlock<marker::RatesPrinter> {
     }
 }
 
-// impl<Kind> ToOptions for ProcessingBlock<Kind>
-// where
-//     Kind: marker::ProcessingBlockKind
-// {
-//     fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
-//         self.ptr.cast::<realsense_sys::rs2_options>()
-//     }
-// }
+impl<Kind> ToOptions for ProcessingBlock<Kind>
+where
+    Kind: marker::ProcessingBlockKind,
+{
+    fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
+        self.ptr.cast::<realsense_sys::rs2_options>()
+    }
+}
 
 impl<Kind> Drop for ProcessingBlock<Kind>
 where
