@@ -75,6 +75,25 @@ pub enum Rs2Option {
     Count = realsense_sys::rs2_option_RS2_OPTION_COUNT,
 }
 
+impl Rs2Option {
+    pub fn to_cstr(&self) -> &'static CStr {
+        unsafe {
+            let ptr = realsense_sys::rs2_option_to_string(*self as realsense_sys::rs2_option);
+            CStr::from_ptr(ptr)
+        }
+    }
+
+    pub fn to_str(&self) -> &'static str {
+        self.to_cstr().to_str().unwrap()
+    }
+}
+
+impl ToString for Rs2Option {
+    fn to_string(&self) -> String {
+        self.to_str().to_owned()
+    }
+}
+
 /// The enumeration of timestamp domains.
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq, Eq, Hash)]

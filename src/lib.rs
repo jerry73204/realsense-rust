@@ -8,6 +8,7 @@ pub mod error;
 pub mod frame;
 pub mod frame_queue;
 pub mod kind;
+pub mod options;
 pub mod pipeline;
 pub mod pipeline_profile;
 pub mod processing_block;
@@ -22,7 +23,9 @@ pub mod prelude {
     pub use crate::frame::{DepthFrame, DisparityFrame, GenericFrame, VideoFrame};
 }
 
-pub use base::{PoseData, Resolution, Rs2Image, StreamProfileData};
+pub use base::{
+    Extrinsics, Intrinsics, MotionIntrinsics, PoseData, Resolution, Rs2Image, StreamProfileData,
+};
 pub use config::Config;
 pub use context::Context;
 pub use device::Device;
@@ -37,6 +40,7 @@ pub use frame_queue::FrameQueue;
 pub use kind::{
     CameraInfo, Extension, Format, FrameMetaDataValue, Rs2Option, StreamKind, TimestampDomain,
 };
+pub use options::{OptionHandle, ToOptions};
 pub use pipeline::Pipeline;
 pub use pipeline_profile::PipelineProfile;
 pub use processing_block::ProcessingBlock;
