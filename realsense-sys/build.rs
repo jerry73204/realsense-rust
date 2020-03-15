@@ -1,4 +1,5 @@
 use failure::Fallible;
+use lazy_static::lazy_static;
 use std::{
     collections::HashSet,
     fs::File,
@@ -6,45 +7,47 @@ use std::{
     path::{Path, PathBuf},
 };
 
-fn main() -> Fallible<()> {
-    // Tell cargo to tell rustc to link the system shared library
-    println!("cargo:rustc-link-lib=realsense2");
+lazy_static! {
+    static ref CARGO_MANIFEST_DIR: PathBuf =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+}
 
+fn main() -> Fallible<()> {
+    // Probe libary
+    let library = probe_library("realsense2")?;
+
+    // Verify version
+    let (include_dir, version) = library
+        .include_paths
+        .iter()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .filter_map(|path| {
+            let dir = Path::new(path).join("librealsense2");
+            if dir.is_dir() {
+                match get_version_from_header_dir(&dir) {
+                    Some(version) => Some((dir, version)),
+                    None => None,
+                }
+            } else {
+                None
+            }
+        })
+        .next()
+        .expect("fail to detect librealsense2 version");
+
+    assert_eq!(
+        &version.major,
+        "2",
+        "librealsense2 version {} is not supported",
+        version.to_string()
+    );
+
+    // generate bindings
     #[cfg(feature = "buildtime-bindgen")]
     {
-        // Probe libary
-        let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-        let library = probe_library("realsense2")?;
-
-        // Verify version
-        let (include_dir, version) = library
-            .include_paths
-            .iter()
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .filter_map(|path| {
-                let dir = Path::new(path).join("librealsense2");
-                if dir.is_dir() {
-                    match get_version_from_header_dir(&dir) {
-                        Some(version) => Some((dir, version)),
-                        None => None,
-                    }
-                } else {
-                    None
-                }
-            })
-            .next()
-            .expect("fail to detect librealsense2 version");
-
-        assert_eq!(
-            &version.major,
-            "2",
-            "librealsense2 version {} is not supported",
-            version.to_string()
-        );
-
         let bindings = bindgen::Builder::default()
-            .header(manifest_dir.join("wrapper.h").to_str().unwrap())
+            .clang_arg("-fno-inline-functions")
             .header(include_dir.join("rs.h").to_str().unwrap())
             .header(
                 include_dir
@@ -61,6 +64,13 @@ fn main() -> Fallible<()> {
                     .unwrap(),
             )
             .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
+            .header(
+                CARGO_MANIFEST_DIR
+                    .join("c")
+                    .join("rsutil_delegate.h")
+                    .to_str()
+                    .unwrap(),
+            )
             .whitelist_var("RS2_.*")
             .whitelist_type("rs2_.*")
             .whitelist_function("rs2_.*")
@@ -69,8 +79,7 @@ fn main() -> Fallible<()> {
             .expect("Unable to generate bindings");
 
         // Write the bindings to file
-        let cargo_manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-        let bindings_dir = cargo_manifest_dir.join("bindings");
+        let bindings_dir = CARGO_MANIFEST_DIR.join("bindings");
         let bindings_file = bindings_dir.join("bindings.rs");
 
         std::fs::create_dir_all(&bindings_dir)?;
@@ -79,10 +88,19 @@ fn main() -> Fallible<()> {
             .expect("Couldn't write bindings!");
     }
 
+    // compile and link rsutil_delegate.h statically
+    cc::Build::new()
+        .include(&include_dir)
+        .include(CARGO_MANIFEST_DIR.join("c"))
+        .file(CARGO_MANIFEST_DIR.join("c").join("rsutil_delegate.c"))
+        .compile("rsutil_delegate");
+
+    // link the librealsense2 shared library
+    println!("cargo:rustc-link-lib=realsense2");
+
     Ok(())
 }
 
-#[cfg(feature = "buildtime-bindgen")]
 fn get_version_from_header_dir<P>(dir: P) -> Option<Version>
 where
     P: AsRef<Path>,
@@ -134,7 +152,6 @@ where
     }
 }
 
-#[cfg(feature = "buildtime-bindgen")]
 fn probe_library(pkg_name: &str) -> Fallible<Library> {
     let package = pkg_config::probe_library(pkg_name)?;
     let lib = Library {

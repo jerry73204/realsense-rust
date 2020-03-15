@@ -1,4 +1,4 @@
-#include "librealsense2/rsutil.h"
+#include "rsutil_delegate.h"
 
 void _rs2_project_point_to_pixel(float pixel[2], const struct rs2_intrinsics * intrin, const float point[3])
 {
