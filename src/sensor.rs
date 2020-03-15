@@ -4,6 +4,7 @@ use crate::{
     device::Device,
     error::{ErrorChecker, Result as RsResult},
     kind::{CameraInfo, Extension, Rs2Option},
+    options::ToOptions,
     processing_block_list::ProcessingBlockList,
     stream_profile_list::StreamProfileList,
 };
@@ -113,7 +114,7 @@ pub struct Sensor<Kind>
 where
     Kind: marker::SensorKind,
 {
-    ptr: NonNull<realsense_sys::rs2_sensor>,
+    pub(crate) ptr: NonNull<realsense_sys::rs2_sensor>,
     _phantom: PhantomData<Kind>,
 }
 
@@ -377,6 +378,15 @@ impl Sensor<marker::Depth> {
     /// Gets the depth units of depth sensor.
     pub fn depth_units(&self) -> RsResult<f32> {
         self.get_option(Rs2Option::DepthUnits)
+    }
+}
+
+impl<Kind> ToOptions for Sensor<Kind>
+where
+    Kind: marker::SensorKind,
+{
+    fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
+        self.ptr.cast::<realsense_sys::rs2_options>()
     }
 }
 
