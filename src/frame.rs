@@ -684,6 +684,38 @@ impl Frame<marker::Composite> {
         };
         Ok(iter)
     }
+
+    pub fn try_iter(&self) -> RsResult<CompositeFrameIter> {
+        let len = self.len()?;
+        let iter = CompositeFrameIter {
+            index: 0,
+            len,
+            ptr: self.ptr,
+            fused: len == 0,
+        };
+        Ok(iter)
+    }
+
+    pub fn first_of<Kind>(&self) -> RsResult<Option<Frame<Kind>>>
+    where
+        Kind: marker::NonAnyFrameKind,
+    {
+        for result in self.try_iter()? {
+            let frame_any = result?;
+            if let Ok(frame) = frame_any.try_extend_to::<Kind>()? {
+                return Ok(Some(frame));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn color_frame(&self) -> RsResult<Option<Frame<marker::Video>>> {
+        self.first_of::<marker::Video>()
+    }
+
+    pub fn depth_frame(&self) -> RsResult<Option<Frame<marker::Depth>>> {
+        self.first_of::<marker::Depth>()
+    }
 }
 
 impl Frame<marker::Pose> {
@@ -847,3 +879,55 @@ impl Drop for CompositeFrameIntoIter {
         }
     }
 }
+
+/// The iterator type returned by [Frame::try_iter](Frame::try_iter).
+#[derive(Debug)]
+pub struct CompositeFrameIter {
+    len: usize,
+    index: usize,
+    ptr: NonNull<realsense_sys::rs2_frame>,
+    fused: bool,
+}
+
+impl Iterator for CompositeFrameIter {
+    type Item = RsResult<Frame<marker::Any>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.fused {
+            return None;
+        }
+
+        let ptr = unsafe {
+            // extract frame
+            let mut checker = ErrorChecker::new();
+            let ptr = realsense_sys::rs2_extract_frame(
+                self.ptr.as_ptr(),
+                self.index as c_int,
+                checker.inner_mut_ptr(),
+            );
+            if let Err(err) = checker.check() {
+                self.fused = true;
+                return Some(Err(err));
+            }
+
+            // add reference
+            let mut checker = ErrorChecker::new();
+            realsense_sys::rs2_frame_add_ref(ptr, checker.inner_mut_ptr());
+            if let Err(err) = checker.check() {
+                self.fused = true;
+                return Some(Err(err));
+            }
+            ptr
+        };
+
+        self.index += 1;
+        if self.index >= self.len {
+            self.fused = true;
+        }
+
+        let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+        Some(Ok(frame))
+    }
+}
+
+impl FusedIterator for CompositeFrameIter {}
