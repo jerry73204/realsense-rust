@@ -1,12 +1,81 @@
+#![cfg(feature = "with-image")]
+#![cfg(feature = "with-nalgebra")]
+
+use crossbeam::channel;
 use failure::Fallible;
 use image::{DynamicImage, ImageFormat};
+use kiss3d::{
+    light::Light,
+    window::{State, Window},
+};
+use nalgebra::Point3;
 use realsense_rust::{
-    prelude::*, Config, Error as RsError, ExtendedFrame, Format, Pipeline, Resolution, StreamKind,
+    frame::marker as frame_marker, prelude::*, processing_block::marker as processing_block_marker,
+    Config, Error as RsError, ExtendedFrame, Format, Frame, Pipeline, ProcessingBlock, Resolution,
+    StreamKind,
 };
 use std::time::Duration;
 
+#[derive(Debug)]
+struct PcdVizState {
+    rx: channel::Receiver<Vec<Point3<f32>>>,
+    points: Option<Vec<Point3<f32>>>,
+}
+
+impl PcdVizState {
+    pub fn new(rx: channel::Receiver<Vec<Point3<f32>>>) -> Self {
+        let state = Self { rx, points: None };
+        state
+    }
+}
+
+impl State for PcdVizState {
+    fn step(&mut self, window: &mut Window) {
+        // try to receive recent points
+        if let Ok(points) = self.rx.try_recv() {
+            self.points = Some(points);
+        };
+
+        // draw axis
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(1.0, 0.0, 0.0),
+            &Point3::new(1.0, 0.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 1.0, 0.0),
+            &Point3::new(0.0, 1.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 0.0, 1.0),
+            &Point3::new(0.0, 0.0, 1.0),
+        );
+
+        // draw points
+        if let Some(points) = &self.points {
+            for point in points.iter() {
+                window.draw_point(point, &Point3::new(1.0, 1.0, 1.0));
+            }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Fallible<()> {
+    let (tx, rx) = channel::unbounded();
+
+    std::thread::spawn(move || {
+        let state = PcdVizState::new(rx);
+        let mut window = Window::new("point cloud");
+        window.set_light(Light::StickToCamera);
+        window.render_loop(state);
+    });
+
+    // pointcloud filter
+    let mut pointcloud = ProcessingBlock::<processing_block_marker::PointCloud>::create()?;
+
     // init pipeline
     let pipeline = Pipeline::new()?;
     let config = Config::new()?
@@ -35,17 +104,20 @@ async fn main() -> Fallible<()> {
 
         println!("frame number = {}", frames.number()?);
 
+        let mut color_frame = None;
+        let mut depth_frame = None;
+
         for frame_result in frames.try_into_iter()? {
             let frame_any = frame_result?;
 
             match frame_any.try_extend()? {
                 ExtendedFrame::Video(frame) => {
                     let image: DynamicImage = frame.image()?.into();
-
                     image.save_with_format(
                         format!("async-video-example-{}.png", frame.number()?),
                         ImageFormat::Png,
                     )?;
+                    color_frame = Some(frame);
                 }
                 ExtendedFrame::Depth(frame) => {
                     let Resolution { width, height } = frame.resolution()?;
@@ -57,9 +129,26 @@ async fn main() -> Fallible<()> {
                         format!("async-depth-example-{}.png", frame.number()?),
                         ImageFormat::Png,
                     )?;
+                    depth_frame = Some(frame);
                 }
                 _ => unreachable!(),
             }
+        }
+
+        // compute point cloud
+        pointcloud.map_to(color_frame.unwrap().clone())?;
+        let points_frame = pointcloud.calculate(depth_frame.unwrap().clone())?;
+        let points = points_frame
+            .vertices()?
+            .iter()
+            .map(|vertex| {
+                let [x, y, z] = vertex.xyz;
+                Point3::new(x, y, z)
+            })
+            .collect::<Vec<_>>();
+
+        if let Err(_) = tx.send(points) {
+            break;
         }
     }
 
