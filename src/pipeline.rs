@@ -240,18 +240,21 @@ impl Pipeline<marker::Active> {
         let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
 
         std::thread::spawn(move || {
-            let func = || unsafe {
-                let mut checker = ErrorChecker::new();
-                let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
-                    pipeline_ptr.load(Ordering::SeqCst),
-                    timeout_ms,
-                    checker.inner_mut_ptr(),
-                );
-                checker.check()?;
-                let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
-                Ok(frame)
+            let result = unsafe {
+                loop {
+                    let mut checker = ErrorChecker::new();
+                    let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
+                        pipeline_ptr.load(Ordering::Relaxed),
+                        timeout_ms,
+                        checker.inner_mut_ptr(),
+                    );
+                    let result = match (timeout, checker.check()) {
+                        (None, Err(RsError::Timeout(..))) => continue,
+                        (_, result) => result.map(|_| Frame::from_ptr(NonNull::new(ptr).unwrap())),
+                    };
+                    break result;
+                }
             };
-            let result = func();
             let _ = tx.send(result);
         });
 
