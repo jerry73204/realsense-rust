@@ -1,13 +1,76 @@
 #![cfg(feature = "with-image")]
+#![cfg(feature = "with-nalgebra")]
 
+use crossbeam::channel;
 use failure::Fallible;
 use image::{DynamicImage, ImageFormat};
+use kiss3d::{
+    light::Light,
+    window::{State, Window},
+};
+use nalgebra::Point3;
 use realsense_rust::{
-    prelude::*, Config, Error as RsError, ExtendedFrame, Format, Pipeline, Resolution, StreamKind,
+    prelude::*, processing_block::marker as processing_block_marker, Config, Error as RsError,
+    ExtendedFrame, Format, Pipeline, ProcessingBlock, Resolution, StreamKind,
 };
 use std::time::Duration;
 
+#[derive(Debug)]
+struct PcdVizState {
+    rx: channel::Receiver<Vec<Point3<f32>>>,
+    points: Option<Vec<Point3<f32>>>,
+}
+
+impl PcdVizState {
+    pub fn new(rx: channel::Receiver<Vec<Point3<f32>>>) -> Self {
+        let state = Self { rx, points: None };
+        state
+    }
+}
+
+impl State for PcdVizState {
+    fn step(&mut self, window: &mut Window) {
+        // try to receive recent points
+        if let Ok(points) = self.rx.try_recv() {
+            self.points = Some(points);
+        };
+
+        // draw axis
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(1.0, 0.0, 0.0),
+            &Point3::new(1.0, 0.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 1.0, 0.0),
+            &Point3::new(0.0, 1.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 0.0, 1.0),
+            &Point3::new(0.0, 0.0, 1.0),
+        );
+
+        // draw points
+        if let Some(points) = &self.points {
+            for point in points.iter() {
+                window.draw_point(point, &Point3::new(1.0, 1.0, 1.0));
+            }
+        }
+    }
+}
+
 fn main() -> Fallible<()> {
+    let (tx, rx) = channel::unbounded();
+
+    std::thread::spawn(move || {
+        let state = PcdVizState::new(rx);
+        let mut window = Window::new("point cloud");
+        window.set_light(Light::StickToCamera);
+        window.render_loop(state);
+    });
+
     // init pipeline
     let pipeline = Pipeline::new()?;
     let config = Config::new()?
@@ -15,6 +78,9 @@ fn main() -> Fallible<()> {
         .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
     let mut pipeline = pipeline.start(Some(config))?;
     let profile = pipeline.profile();
+
+    // pointcloud filter
+    let mut pointcloud = ProcessingBlock::<processing_block_marker::PointCloud>::create()?;
 
     // show stream info
     for (idx, stream_result) in profile.streams()?.try_into_iter()?.enumerate() {
@@ -36,31 +102,46 @@ fn main() -> Fallible<()> {
 
         println!("frame number = {}", frames.number()?);
 
-        for frame_result in frames.try_into_iter()? {
-            let frame_any = frame_result?;
+        let color_frame = frames.color_frame()?.unwrap();
+        let depth_frame = frames.depth_frame()?.unwrap();
 
-            match frame_any.try_extend()? {
-                ExtendedFrame::Video(frame) => {
-                    let image: DynamicImage = frame.image()?.into();
+        // // save video frame
+        {
+            let image: DynamicImage = color_frame.image()?.into();
 
-                    image.save_with_format(
-                        format!("sync-video-example-{}.png", frame.number()?),
-                        ImageFormat::Png,
-                    )?;
-                }
-                ExtendedFrame::Depth(frame) => {
-                    let Resolution { width, height } = frame.resolution()?;
-                    let distance = frame.distance(width / 2, height / 2)?;
-                    println!("distance = {}", distance);
+            image.save_with_format(
+                format!("sync-video-example-{}.png", color_frame.number()?),
+                ImageFormat::Png,
+            )?;
+        }
 
-                    let image: DynamicImage = frame.image()?.into();
-                    image.save_with_format(
-                        format!("sync-depth-example-{}.png", frame.number()?),
-                        ImageFormat::Png,
-                    )?;
-                }
-                _ => unreachable!(),
-            }
+        // save depth frame
+        {
+            let Resolution { width, height } = depth_frame.resolution()?;
+            let distance = depth_frame.distance(width / 2, height / 2)?;
+            println!("distance = {}", distance);
+
+            let image: DynamicImage = depth_frame.image()?.into();
+            image.save_with_format(
+                format!("sync-depth-example-{}.png", depth_frame.number()?),
+                ImageFormat::Png,
+            )?;
+        }
+
+        // // compute point cloud
+        pointcloud.map_to(color_frame)?;
+        let points_frame = pointcloud.calculate(depth_frame)?;
+        let points = points_frame
+            .vertices()?
+            .iter()
+            .map(|vertex| {
+                let [x, y, z] = vertex.xyz;
+                Point3::new(x, y, z)
+            })
+            .collect::<Vec<_>>();
+
+        if let Err(_) = tx.send(points) {
+            break;
         }
     }
 
