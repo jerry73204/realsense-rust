@@ -5,7 +5,7 @@ use crate::base::Rs2Image;
 use crate::{
     base::{PoseData, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, Format, FrameMetaDataValue, TimestampDomain},
+    kind::{Extension, Format, FrameMetaDataValue, TimestampDomain, StreamKind},
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::{marker as stream_marker, StreamProfile},
 };
@@ -704,25 +704,27 @@ impl Frame<marker::Composite> {
         Ok(iter)
     }
 
-    pub fn first_of<Kind>(&self) -> RsResult<Option<Frame<Kind>>>
+    pub fn first_of<Kind>(&self, stream: StreamKind) -> RsResult<Option<Frame<Kind>>>
     where
         Kind: marker::NonAnyFrameKind,
     {
         for result in self.try_iter()? {
             let frame_any = result?;
             if let Ok(frame) = frame_any.try_extend_to::<Kind>()? {
-                return Ok(Some(frame));
+                if frame.stream_profile()?.get_data()?.stream == stream {
+                    return Ok(Some(frame));
+                }
             }
         }
         Ok(None)
     }
 
     pub fn color_frame(&self) -> RsResult<Option<Frame<marker::Video>>> {
-        self.first_of::<marker::Video>()
+        self.first_of::<marker::Video>(StreamKind::Color)
     }
 
     pub fn depth_frame(&self) -> RsResult<Option<Frame<marker::Depth>>> {
-        self.first_of::<marker::Depth>()
+        self.first_of::<marker::Depth>(StreamKind::Depth)
     }
 }
 
