@@ -89,7 +89,7 @@ fn main() -> Fallible<()> {
     }
 
     // process frames
-    for _ in 0..16 {
+    for _ in 0..1000 {
         let timeout = Duration::from_millis(1000);
         let frames_result = pipeline.wait(Some(timeout));
         let frames = match frames_result {
@@ -105,10 +105,9 @@ fn main() -> Fallible<()> {
         let color_frame = frames.color_frame()?.unwrap();
         let depth_frame = frames.depth_frame()?.unwrap();
 
-        // // save video frame
+        // save video frame
         {
             let image: DynamicImage = color_frame.image()?.into();
-
             image.save_with_format(
                 format!("sync-video-example-{}.png", color_frame.number()?),
                 ImageFormat::Png,
@@ -128,7 +127,7 @@ fn main() -> Fallible<()> {
             )?;
         }
 
-        // // compute point cloud
+        // compute point cloud
         pointcloud.map_to(color_frame.clone())?;
         let points_frame = pointcloud.calculate(depth_frame.clone())?;
         let points = points_frame

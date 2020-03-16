@@ -91,7 +91,7 @@ async fn main() -> Fallible<()> {
     }
 
     // process frames
-    for _ in 0..16 {
+    for _ in 0..1000 {
         let timeout = Duration::from_millis(1000);
         let frames_result = pipeline.wait_async(Some(timeout)).await;
         let frames = match frames_result {
@@ -103,41 +103,35 @@ async fn main() -> Fallible<()> {
         };
 
         println!("frame number = {}", frames.number()?);
+        
+        let color_frame = frames.color_frame()?.unwrap();
+        let depth_frame = frames.depth_frame()?.unwrap();
 
-        let mut color_frame = None;
-        let mut depth_frame = None;
+        // save video frame
+        {
+            let image: DynamicImage = color_frame.image()?.into();
+            image.save_with_format(
+                format!("sync-video-example-{}.png", color_frame.number()?),
+                ImageFormat::Png,
+            )?;
+        }
 
-        for frame_result in frames.try_into_iter()? {
-            let frame_any = frame_result?;
+        // save depth frame
+        {
+            let Resolution { width, height } = depth_frame.resolution()?;
+            let distance = depth_frame.distance(width / 2, height / 2)?;
+            println!("distance = {}", distance);
 
-            match frame_any.try_extend()? {
-                ExtendedFrame::Video(frame) => {
-                    let image: DynamicImage = frame.image()?.into();
-                    image.save_with_format(
-                        format!("async-video-example-{}.png", frame.number()?),
-                        ImageFormat::Png,
-                    )?;
-                    color_frame = Some(frame);
-                }
-                ExtendedFrame::Depth(frame) => {
-                    let Resolution { width, height } = frame.resolution()?;
-                    let distance = frame.distance(width / 2, height / 2)?;
-                    println!("distance = {} meter", distance);
-
-                    let image: DynamicImage = frame.image()?.into();
-                    image.save_with_format(
-                        format!("async-depth-example-{}.png", frame.number()?),
-                        ImageFormat::Png,
-                    )?;
-                    depth_frame = Some(frame);
-                }
-                _ => unreachable!(),
-            }
+            let image: DynamicImage = depth_frame.image()?.into();
+            image.save_with_format(
+                format!("sync-depth-example-{}.png", depth_frame.number()?),
+                ImageFormat::Png,
+            )?;
         }
 
         // compute point cloud
-        pointcloud.map_to(color_frame.unwrap().clone())?;
-        let points_frame = pointcloud.calculate(depth_frame.unwrap().clone())?;
+        pointcloud.map_to(color_frame.clone())?;
+        let points_frame = pointcloud.calculate(depth_frame.clone())?;
         let points = points_frame
             .vertices()?
             .iter()
