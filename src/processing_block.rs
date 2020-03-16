@@ -143,10 +143,11 @@ where
         K: frame_marker::FrameKind,
     {
         unsafe {
+            let frame_ptr = input.take();
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_process_frame(
                 self.ptr.as_ptr(),
-                input.ptr.as_ptr(),
+                frame_ptr.as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -160,10 +161,11 @@ where
         K: frame_marker::FrameKind,
     {
         unsafe {
+            let frame_ptr = input.take();
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_process_frame(
                 self.ptr.as_ptr(),
-                input.ptr.as_ptr(),
+                frame_ptr.as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -194,7 +196,7 @@ where
         ptr: NonNull<realsense_sys::rs2_processing_block>,
         capacity: usize,
     ) -> RsResult<Self> {
-        let queue = FrameQueue::with_capacity(1)?;
+        let queue = FrameQueue::with_capacity(capacity)?;
 
         // start processing
         {
