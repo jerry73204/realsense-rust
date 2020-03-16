@@ -675,11 +675,6 @@ impl Frame<marker::Composite> {
             );
             checker.check()?;
 
-            // add reference
-            let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_frame_add_ref(ptr, checker.inner_mut_ptr());
-            checker.check()?;
-
             Frame::from_ptr(NonNull::new(ptr).unwrap())
         };
         Ok(Some(frame))
@@ -871,14 +866,6 @@ impl Iterator for CompositeFrameIntoIter {
                 self.fused = true;
                 return Some(Err(err));
             }
-
-            // add reference
-            let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_frame_add_ref(ptr, checker.inner_mut_ptr());
-            if let Err(err) = checker.check() {
-                self.fused = true;
-                return Some(Err(err));
-            }
             ptr
         };
 
@@ -927,14 +914,6 @@ impl Iterator for CompositeFrameIter {
                 self.index as c_int,
                 checker.inner_mut_ptr(),
             );
-            if let Err(err) = checker.check() {
-                self.fused = true;
-                return Some(Err(err));
-            }
-
-            // add reference
-            let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_frame_add_ref(ptr, checker.inner_mut_ptr());
             if let Err(err) = checker.check() {
                 self.fused = true;
                 return Some(Err(err));
