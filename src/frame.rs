@@ -98,7 +98,10 @@ pub mod marker {
 }
 
 /// The trait provides common methods on frames of all kinds.
-pub trait GenericFrame {
+pub trait GenericFrame
+where
+    Self: Sized,
+{
     /// Obtains the metadata of frame.
     fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
         unsafe {
@@ -202,6 +205,16 @@ pub trait GenericFrame {
             StreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false)
         };
         Ok(profile)
+    }
+
+    fn try_clone(&self) -> RsResult<Self> {
+        unsafe {
+            // add reference
+            let mut checker = ErrorChecker::new();
+            realsense_sys::rs2_frame_add_ref(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+            Ok(Self::from_ptr(self.ptr()))
+        }
     }
 
     fn ptr(&self) -> NonNull<realsense_sys::rs2_frame>;
@@ -803,6 +816,15 @@ impl IntoIterator for Frame<marker::Composite> {
     ///
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
+    }
+}
+
+impl<Kind> Clone for Frame<Kind>
+where
+    Kind: marker::FrameKind,
+{
+    fn clone(&self) -> Self {
+        self.try_clone().unwrap()
     }
 }
 

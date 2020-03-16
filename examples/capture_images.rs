@@ -129,8 +129,8 @@ fn main() -> Fallible<()> {
         }
 
         // // compute point cloud
-        pointcloud.map_to(color_frame)?;
-        let points_frame = pointcloud.calculate(depth_frame)?;
+        pointcloud.map_to(color_frame.clone())?;
+        let points_frame = pointcloud.calculate(depth_frame.clone())?;
         let points = points_frame
             .vertices()?
             .iter()
