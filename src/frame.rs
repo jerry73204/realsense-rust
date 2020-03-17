@@ -5,7 +5,7 @@ use crate::base::Rs2Image;
 use crate::{
     base::{PoseData, Resolution, StreamProfileData},
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, Format, FrameMetaDataValue, TimestampDomain, StreamKind},
+    kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::{marker as stream_marker, StreamProfile},
 };

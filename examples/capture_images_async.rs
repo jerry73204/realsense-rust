@@ -103,7 +103,7 @@ async fn main() -> Fallible<()> {
         };
 
         println!("frame number = {}", frames.number()?);
-        
+
         let color_frame = frames.color_frame()?.unwrap();
         let depth_frame = frames.depth_frame()?.unwrap();
 

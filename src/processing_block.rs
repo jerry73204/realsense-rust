@@ -678,3 +678,5 @@ where
         }
     }
 }
+
+unsafe impl<Kind> Send for ProcessingBlock<Kind> where Kind: marker::ProcessingBlockKind {}
