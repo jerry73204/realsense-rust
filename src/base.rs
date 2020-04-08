@@ -2,7 +2,8 @@
 
 use crate::kind::{Format, StreamKind};
 #[cfg(feature = "with-image")]
-use image::{Bgr, Bgra, ConvertBuffer, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
+use image::buffer::ConvertBuffer;
+use image::{Bgr, Bgra, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
 #[cfg(feature = "with-nalgebra")]
 use nalgebra::{Isometry3, MatrixMN, Quaternion, Translation3, Unit, UnitQuaternion, Vector3, U3};
 use std::{
