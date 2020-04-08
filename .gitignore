@@ -1,3 +1,5 @@
+# Jetbrains IDE configs
+.idea
 # rust
 /target
 /Cargo.lock
