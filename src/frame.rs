@@ -726,6 +726,10 @@ impl Frame<marker::Composite> {
     pub fn depth_frame(&self) -> RsResult<Option<Frame<marker::Depth>>> {
         self.first_of::<marker::Depth>(StreamKind::Depth)
     }
+
+    pub fn pose_frame(&self) -> RsResult<Option<Frame<marker::Pose>>> {
+        self.first_of::<marker::Pose>(StreamKind::Pose)
+    }
 }
 
 impl Frame<marker::Pose> {
