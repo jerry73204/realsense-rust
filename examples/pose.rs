@@ -1,6 +1,6 @@
 use failure::Fallible;
 use realsense_rust::Error as RsError;
-use realsense_rust::{Format as RsFormat, Frame, StreamKind};
+use realsense_rust::{Format as RsFormat, StreamKind};
 use std::time::Duration;
 
 #[tokio::main]
@@ -8,7 +8,7 @@ async fn main() -> Fallible<()> {
     println!("Looking for RealSense devices");
     let ctx = realsense_rust::Context::new()?;
     let devices = ctx.query_devices(None)?;
-    let dcount = devices.len().unwrap();
+    let dcount = devices.len()?;
     if dcount == 0 {
         return Err(failure::err_msg("No RS devices found"));
     }
@@ -32,12 +32,10 @@ async fn main() -> Fallible<()> {
                 println!("timeout error");
                 continue;
             }
-            result @ _ => result?,
+            result => result?,
         };
         let poseframe = frames.pose_frame()?.unwrap();
         let pose = poseframe.pose()?;
         println!("posedata: {:?}", pose);
     }
-
-    Ok(())
 }

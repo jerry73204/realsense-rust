@@ -31,6 +31,3 @@ buildtime-bindgen = ["realsense-sys/buildtime-bindgen"]
 device-test = []
 with-nalgebra = ["nalgebra"]
 with-image = ["image"]
-
-[[example]]
-name="pose"
