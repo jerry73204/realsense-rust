@@ -25,6 +25,15 @@ impl Device {
         Ok(list)
     }
 
+    pub fn hardware_reset(&self) -> RsResult<()> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            realsense_sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            checker.check()?;
+        }
+        Ok(())
+    }
+
     pub fn name(&self) -> RsResult<Option<&str>> {
         self.info(CameraInfo::Name)
     }
