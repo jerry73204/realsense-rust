@@ -28,7 +28,7 @@ impl Device {
     pub fn hardware_reset(&self) -> RsResult<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let _ = realsense_sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            realsense_sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
         }
         Ok(())
