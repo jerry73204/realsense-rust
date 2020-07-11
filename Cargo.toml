@@ -10,20 +10,20 @@ homepage = "https://github.com/jerry73204/realsense-rust"
 repository = "https://github.com/jerry73204/realsense-rust"
 
 [dependencies]
-realsense-sys = { version = "^0.2.1", path = "realsense-sys" }
-num-derive = "^0.3.0"
-num-traits = "^0.2.11"
-nalgebra = { version = "^0.20.0", optional = true }
-futures = "^0.3.4"
-image = { version = "^0.23.0", optional = true }
-safe-transmute = "^0.11.0-rc.2"
+realsense-sys = { version = "0.2.1", path = "realsense-sys" }
+num-derive = "0.3"
+num-traits = "0.2"
+nalgebra = { version = "0.20", optional = true }
+futures = "0.3"
+image = { version = "0.23", optional = true }
+safe-transmute = "0.11.0-rc.2"
 
 [dev-dependencies]
-tokio = { version  = "0.2.11", features = ["rt-threaded", "macros"] }
-failure = "0.1.6"
-lazy_static = "^1.4.0"
-kiss3d = "^0.23.0"
-crossbeam = "^0.7.3"
+tokio = { version  = "0.2", features = ["rt-threaded", "macros"] }
+failure = "0.1"
+lazy_static = "1.4"
+kiss3d = "0.23"
+crossbeam = "0.7"
 
 [features]
 default = ["with-nalgebra", "with-image"]
