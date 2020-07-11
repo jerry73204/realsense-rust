@@ -1,7 +1,7 @@
-use failure::ensure;
-use failure::Fallible;
+use anyhow::ensure;
+use anyhow::Result;
 
-fn main() -> Fallible<()> {
+fn main() -> Result<()> {
     println!("Looking for RealSense devices");
     let ctx = realsense_rust::Context::new()?;
     let devices = ctx.query_devices(None)?;

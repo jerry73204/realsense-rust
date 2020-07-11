@@ -1,16 +1,16 @@
-use failure::Fallible;
+use anyhow::{Result, bail};
 use realsense_rust::Error as RsError;
 use realsense_rust::{Format as RsFormat, StreamKind};
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Fallible<()> {
+async fn main() -> Result<()> {
     println!("Looking for RealSense devices");
     let ctx = realsense_rust::Context::new()?;
     let devices = ctx.query_devices(None)?;
     let dcount = devices.len()?;
     if dcount == 0 {
-        return Err(failure::err_msg("No RS devices found"));
+        bail!("No RS devices found");
     }
 
     let pipeline = realsense_rust::Pipeline::new()?;

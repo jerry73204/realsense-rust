@@ -1,7 +1,7 @@
 #![cfg(feature = "with-image")]
 #![cfg(feature = "device-test")]
 
-use failure::Fallible;
+use anyhow::Result;
 use image::{DynamicImage, ImageFormat};
 use lazy_static::lazy_static;
 use realsense_rust::{
@@ -16,7 +16,7 @@ lazy_static! {
 }
 
 #[test]
-fn async_test() -> Fallible<()> {
+fn async_test() -> Result<()> {
     // lock global mutex
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
 
@@ -80,7 +80,7 @@ fn async_test() -> Fallible<()> {
             }
         }
 
-        Fallible::Ok(())
+        Result::Ok(())
     })?;
 
     *counter += 1;
@@ -88,7 +88,7 @@ fn async_test() -> Fallible<()> {
 }
 
 #[test]
-fn sync_test() -> Fallible<()> {
+fn sync_test() -> Result<()> {
     // lock global mutex
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
 

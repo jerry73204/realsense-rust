@@ -2,7 +2,7 @@
 #![cfg(feature = "with-nalgebra")]
 
 use crossbeam::channel;
-use failure::Fallible;
+use anyhow::Result;
 use image::{DynamicImage, ImageFormat};
 use kiss3d::{
     light::Light,
@@ -63,7 +63,7 @@ impl State for PcdVizState {
 }
 
 #[tokio::main]
-async fn main() -> Fallible<()> {
+async fn main() -> Result<()> {
     let (tx, rx) = channel::unbounded();
 
     std::thread::spawn(move || {
@@ -91,7 +91,7 @@ async fn main() -> Fallible<()> {
     }
 
     // process frames
-    for _ in 0..1000 {
+    for _ in 0usize..1000 {
         let timeout = Duration::from_millis(1000);
         let frames_result = pipeline.wait_async(Some(timeout)).await;
         let frames = match frames_result {

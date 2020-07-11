@@ -2,7 +2,7 @@
 #![cfg(feature = "with-nalgebra")]
 
 use crossbeam::channel;
-use failure::Fallible;
+use anyhow::Result;
 use image::{DynamicImage, ImageFormat};
 use kiss3d::{
     light::Light,
@@ -61,7 +61,7 @@ impl State for PcdVizState {
     }
 }
 
-fn main() -> Fallible<()> {
+fn main() -> Result<()> {
     let (tx, rx) = channel::unbounded();
 
     std::thread::spawn(move || {
