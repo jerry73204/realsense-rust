@@ -1,6 +1,7 @@
 //! Defines the sensor type.
 
 use crate::{
+    common::*,
     device::Device,
     error::{ErrorChecker, Result as RsResult},
     kind::{CameraInfo, Extension, Rs2Option},
@@ -8,7 +9,6 @@ use crate::{
     processing_block_list::ProcessingBlockList,
     stream_profile_list::StreamProfileList,
 };
-use std::{ffi::CStr, marker::PhantomData, ptr::NonNull};
 
 /// Marker traits and types for [Sensor].
 pub mod marker {

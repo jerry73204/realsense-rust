@@ -1,10 +1,10 @@
 //! Configuration type for [Pipeline](crate::pipeline::Pipeline).
 
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::{Format, StreamKind},
 };
-use std::{os::raw::c_int, ptr::NonNull};
 
 /// The pipeline configuration that will be consumed by [Pipeline::start()](crate::pipeline::Pipeline::start).
 #[derive(Debug)]

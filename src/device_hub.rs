@@ -1,12 +1,10 @@
 //! Defines the type of device hubs.
 
 use crate::{
+    common::*,
     device::Device,
     error::{ErrorChecker, Result as RsResult},
 };
-#[cfg(any(windows))]
-use std::os::windows::ffi::OsStrExt;
-use std::ptr::NonNull;
 
 /// Represents a collection of devices.
 #[derive(Debug)]

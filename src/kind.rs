@@ -1,8 +1,6 @@
 //! Defines the common used enums.
 
-/// Collection of enum types.
-use num_derive::FromPrimitive;
-use std::ffi::CStr;
+use crate::common::*;
 
 /// The enumeration of options.
 #[repr(u32)]

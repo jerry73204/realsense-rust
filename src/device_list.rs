@@ -1,10 +1,10 @@
 //! Defines the iterable list of devices.
 
 use crate::{
+    common::*,
     device::Device,
     error::{ErrorChecker, Result as RsResult},
 };
-use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// An iterable list of devices.
 #[derive(Debug)]

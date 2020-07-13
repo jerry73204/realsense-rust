@@ -1,10 +1,10 @@
 //! Defines the iterable list of processing blocks.
 
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     processing_block::{marker as processing_block_marker, ProcessingBlock},
 };
-use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// The iterable list of [ProcessingBlock](ProcessingBlock)s.
 #[derive(Debug)]

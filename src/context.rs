@@ -1,15 +1,11 @@
 //! Defines the sensor context.
 
 use crate::{
+    common::*,
     device_hub::DeviceHub,
     device_list::DeviceList,
     error::{ErrorChecker, Result as RsResult},
 };
-#[cfg(any(unix))]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(any(windows))]
-use std::os::windows::ffi::OsStrExt;
-use std::{ffi::CString, os::raw::c_int, path::Path, ptr::NonNull};
 
 #[derive(Debug)]
 pub struct Context {

@@ -1,16 +1,6 @@
 //! Common types and functions.
 
-use crate::kind::{Format, StreamKind};
-#[cfg(feature = "with-image")]
-use image::buffer::ConvertBuffer;
-use image::{Bgr, Bgra, DynamicImage, ImageBuffer, Luma, Rgb, Rgba};
-#[cfg(feature = "with-nalgebra")]
-use nalgebra::{Isometry3, MatrixMN, Quaternion, Translation3, Unit, UnitQuaternion, Vector3, U3};
-use std::{
-    convert::{AsMut, AsRef},
-    ops::{Deref, DerefMut},
-    time::Duration,
-};
+use crate::common::*;
 
 pub const DEFAULT_TIMEOUT: Duration =
     Duration::from_millis(realsense_sys::RS2_DEFAULT_TIMEOUT as u64);

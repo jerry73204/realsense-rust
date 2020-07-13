@@ -4,20 +4,11 @@
 use crate::base::Rs2Image;
 use crate::{
     base::{PoseData, Resolution, StreamProfileData},
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{marker as sensor_marker, Sensor},
     stream_profile::{marker as stream_marker, StreamProfile},
-};
-#[cfg(feature = "with-image")]
-use image::{
-    flat::{FlatSamples, SampleLayout},
-    ColorType,
-};
-use num_traits::FromPrimitive;
-use safe_transmute::guard::PedanticGuard;
-use std::{
-    iter::FusedIterator, marker::PhantomData, mem::MaybeUninit, os::raw::c_int, ptr::NonNull,
 };
 
 /// Marker types and traits for [Frame].

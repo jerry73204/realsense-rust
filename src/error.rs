@@ -1,11 +1,6 @@
 //! Defines the error type used by the crate.
 
-use std::{
-    error::Error as StdError,
-    ffi::CStr,
-    fmt::{Debug, Display, Formatter, Result as FormatResult},
-    ptr::NonNull,
-};
+use crate::common::*;
 
 #[derive(Debug)]
 pub(crate) struct ErrorChecker {

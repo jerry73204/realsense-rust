@@ -1,4 +1,5 @@
 pub mod base;
+mod common;
 pub mod config;
 pub mod context;
 pub mod device;
@@ -23,9 +24,9 @@ pub mod prelude {
     pub use crate::frame::{DepthFrame, DisparityFrame, GenericFrame, VideoFrame};
 }
 
-pub use base::{
-    Extrinsics, Intrinsics, MotionIntrinsics, PoseData, Resolution, Rs2Image, StreamProfileData,
-};
+#[cfg(feature = "with-image")]
+pub use base::Rs2Image;
+pub use base::{Extrinsics, Intrinsics, MotionIntrinsics, PoseData, Resolution, StreamProfileData};
 pub use config::Config;
 pub use context::Context;
 pub use device::Device;

@@ -1,10 +1,10 @@
 //! Defines the iterable list of stream profiles.
 
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     stream_profile::{marker as stream_marker, StreamProfile},
 };
-use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// An iterable list of streams.
 #[derive(Debug)]

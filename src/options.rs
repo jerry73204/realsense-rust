@@ -1,9 +1,8 @@
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::Rs2Option,
 };
-use num_traits::FromPrimitive;
-use std::{collections::HashMap, ffi::CStr, ptr::NonNull};
 
 pub trait ToOptions {
     fn to_options(&self) -> RsResult<HashMap<Rs2Option, OptionHandle>> {

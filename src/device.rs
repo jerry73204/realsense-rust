@@ -1,11 +1,11 @@
 //! Defines the device types.
 
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::CameraInfo,
     sensor_list::SensorList,
 };
-use std::{ffi::CStr, ptr::NonNull};
 
 /// Represents a device instance.
 #[derive(Debug)]

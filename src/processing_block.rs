@@ -2,13 +2,13 @@
 
 use crate::{
     base::StreamProfileData,
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     frame::{marker as frame_marker, ExtendedFrame, Frame, GenericFrame},
     frame_queue::FrameQueue,
     kind::{ColorScheme, Extension, HoleFillingMode, PersistenceControl, Rs2Option, StreamKind},
     options::ToOptions,
 };
-use std::{marker::PhantomData, mem::MaybeUninit, os::raw::c_uchar, ptr::NonNull};
 
 pub mod marker {
     use super::*;

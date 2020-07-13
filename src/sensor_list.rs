@@ -1,10 +1,10 @@
 //! Defines the iterable list of sensors.
 
 use crate::{
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     sensor::{marker as sensor_marker, Sensor},
 };
-use std::{iter::FusedIterator, os::raw::c_int, ptr::NonNull};
 
 /// An iterable list of sensors.
 #[derive(Debug)]

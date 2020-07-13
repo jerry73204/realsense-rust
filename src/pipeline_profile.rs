@@ -1,11 +1,11 @@
 //! Defines the profile type of pipeline.
 
 use crate::{
+    common::*,
     device::Device,
     error::{ErrorChecker, Result as RsResult},
     stream_profile_list::StreamProfileList,
 };
-use std::ptr::NonNull;
 
 #[derive(Debug)]
 pub struct PipelineProfile {

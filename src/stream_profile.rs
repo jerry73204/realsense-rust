@@ -2,11 +2,10 @@
 
 use crate::{
     base::{Extrinsics, Intrinsics, MotionIntrinsics, Resolution, StreamProfileData},
+    common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, StreamKind},
 };
-use num_traits::FromPrimitive;
-use std::{borrow::Borrow, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
 
 /// Marker traits and types for [StreamProfile].
 pub mod marker {
