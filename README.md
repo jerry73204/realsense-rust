@@ -5,25 +5,35 @@ It supports asynchronous API and integration with [image](https://github.com/ima
 
 ## Usage
 
-Add the dependency in `Cargo.toml` to import this crate in your project.
+Visit RealSense official repository ([link](https://github.com/IntelRealSense/librealsense)) and install **librealsense 2.36.0** on your system.
+
+To add this crate to your project,
 
 ```toml
 [dependencies]
-realsense-rust = "^0.3.0"
+realsense-rust = "0.3"
 ```
 
-If you would like to generate Rust bindings during build time, you can enable the `buildtime-bindgen` feature.
+
+If you have troubles compiling this project, perhaps your system is using older librealsense. Try to update the library. Otherwise you can enable `buildtime-bindgen` cargo feature to generate Rust bindings during build time.
 
 ```toml
 [dependencies]
-realsense-rust = { version = "^0.3.0", features = ["buildtime-bindgen"] }
+realsense-rust = { version = "0.3", features = ["buildtime-bindgen"] }
 ```
+
+## Cargo Features
+
+- **with-nalgebra** (default): Enable [nalgebra](https://github.com/rustsim/nalgebra) support.
+- **with-image** (default): Enable [image](https://github.com/image-rs/image) support.
+- **buildtime-bindgen**: Generate Rust bindings during build time.
+- **device-test**: Enable tests that requires connections to RealSense devices.
 
 ## Examples
 
 Please visit the [examples](examples) directory to see the example usages.
 
-## How to make contributions
+## Contribute to the project
 
 ### realsense-sys: Low-level API
 
