@@ -11,9 +11,8 @@ mod example {
     };
     use nalgebra::Point3;
     use realsense_rust::{
-        frame::marker as frame_marker, prelude::*,
-        processing_block::marker as processing_block_marker, Config, Error as RsError,
-        ExtendedFrame, Format, Frame, Pipeline, ProcessingBlock, Resolution, StreamKind,
+        prelude::*, processing_block::marker as processing_block_marker, Config, Error as RsError,
+        Format, Pipeline, ProcessingBlock, Resolution, StreamKind,
     };
     use std::time::Duration;
 
@@ -63,7 +62,6 @@ mod example {
         }
     }
 
-    #[tokio::main]
     pub async fn main() -> Result<()> {
         let (tx, rx) = channel::unbounded();
 

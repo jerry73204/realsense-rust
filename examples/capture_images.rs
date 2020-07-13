@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 #[cfg(all(feature = "with-image", feature = "with-nalgebra"))]
 mod example {
     use anyhow::Result;
@@ -10,7 +12,7 @@ mod example {
     use nalgebra::Point3;
     use realsense_rust::{
         prelude::*, processing_block::marker as processing_block_marker, Config, Error as RsError,
-        ExtendedFrame, Format, Pipeline, ProcessingBlock, Resolution, StreamKind,
+        Format, Pipeline, ProcessingBlock, Resolution, StreamKind,
     };
     use std::time::Duration;
 
