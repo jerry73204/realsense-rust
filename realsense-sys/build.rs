@@ -13,6 +13,10 @@ lazy_static! {
 }
 
 fn main() -> Result<()> {
+    if cfg!(feature = "doc-only") {
+        return Ok(());
+    }
+
     // Probe libary
     let library = probe_library("realsense2")?;
 
@@ -138,7 +142,9 @@ where
             }
         }
 
-        if let (Some(major), Some(minor), Some(patch), Some(build)) = (&major_opt, &minor_opt, &patch_opt, &build_opt) {
+        if let (Some(major), Some(minor), Some(patch), Some(build)) =
+            (&major_opt, &minor_opt, &patch_opt, &build_opt)
+        {
             let version = Version {
                 major: major.to_owned(),
                 minor: minor.to_owned(),

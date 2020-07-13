@@ -27,3 +27,4 @@ vcpkg = { version = "0.2" }
 [features]
 default = []
 buildtime-bindgen = ["bindgen"]
+doc-only = []
