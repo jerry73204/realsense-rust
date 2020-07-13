@@ -1,4 +1,4 @@
-use failure::Fallible;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use std::{
     collections::HashSet,
@@ -12,7 +12,7 @@ lazy_static! {
         PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
 }
 
-fn main() -> Fallible<()> {
+fn main() -> Result<()> {
     // Probe libary
     let library = probe_library("realsense2")?;
 
@@ -152,7 +152,7 @@ where
     }
 }
 
-fn probe_library(pkg_name: &str) -> Fallible<Library> {
+fn probe_library(pkg_name: &str) -> Result<Library> {
     let package = pkg_config::probe_library(pkg_name)?;
     let lib = Library {
         pkg_name: pkg_name.to_owned(),
