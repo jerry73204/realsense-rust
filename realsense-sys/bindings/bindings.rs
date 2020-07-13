@@ -13,10 +13,10 @@ pub const RS2_UNSIGNED_UPDATE_MODE_UPDATE: u32 = 0;
 pub const RS2_UNSIGNED_UPDATE_MODE_READ_ONLY: u32 = 1;
 pub const RS2_UNSIGNED_UPDATE_MODE_FULL: u32 = 2;
 pub const RS2_API_MAJOR_VERSION: u32 = 2;
-pub const RS2_API_MINOR_VERSION: u32 = 32;
-pub const RS2_API_PATCH_VERSION: u32 = 1;
+pub const RS2_API_MINOR_VERSION: u32 = 35;
+pub const RS2_API_PATCH_VERSION: u32 = 2;
 pub const RS2_API_BUILD_VERSION: u32 = 0;
-pub const RS2_API_VERSION: u32 = 23201;
+pub const RS2_API_VERSION: u32 = 23502;
 pub const RS2_DEFAULT_TIMEOUT: u32 = 15000;
 ///< Frames didn't arrived within 5 seconds
 pub const rs2_notification_category_RS2_NOTIFICATION_CATEGORY_FRAMES_TIMEOUT:
@@ -565,6 +565,8 @@ pub const rs2_log_severity_RS2_LOG_SEVERITY_FATAL: rs2_log_severity = 4;
 pub const rs2_log_severity_RS2_LOG_SEVERITY_NONE: rs2_log_severity = 5;
 ///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
 pub const rs2_log_severity_RS2_LOG_SEVERITY_COUNT: rs2_log_severity = 6;
+///< Include any/all log messages
+pub const rs2_log_severity_RS2_LOG_SEVERITY_ALL: rs2_log_severity = 0;
 /// \brief Severity of the librealsense logger.
 pub type rs2_log_severity = u32;
 extern "C" {
@@ -616,7 +618,8 @@ pub const rs2_extension_RS2_EXTENSION_COLOR_SENSOR: rs2_extension = 42;
 pub const rs2_extension_RS2_EXTENSION_MOTION_SENSOR: rs2_extension = 43;
 pub const rs2_extension_RS2_EXTENSION_FISHEYE_SENSOR: rs2_extension = 44;
 pub const rs2_extension_RS2_EXTENSION_DEPTH_HUFFMAN_DECODER: rs2_extension = 45;
-pub const rs2_extension_RS2_EXTENSION_COUNT: rs2_extension = 46;
+pub const rs2_extension_RS2_EXTENSION_SERIALIZABLE: rs2_extension = 46;
+pub const rs2_extension_RS2_EXTENSION_COUNT: rs2_extension = 47;
 /// \brief Specifies advanced interfaces (capabilities) objects may implement.
 pub type rs2_extension = u32;
 extern "C" {
@@ -648,6 +651,11 @@ pub struct rs2_device {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rs2_error {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rs2_log_message {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -790,9 +798,18 @@ pub struct rs2_notification {
 pub struct rs2_notifications_callback {
     _unused: [u8; 0],
 }
+pub type rs2_log_callback_ptr = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: rs2_log_severity,
+        arg2: *const rs2_log_message,
+        arg: *mut ::std::os::raw::c_void,
+    ),
+>;
 pub type rs2_notification_callback_ptr = ::std::option::Option<
     unsafe extern "C" fn(arg1: *mut rs2_notification, arg2: *mut ::std::os::raw::c_void),
 >;
+pub type rs2_software_device_destruction_callback_ptr =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void)>;
 pub type rs2_devices_changed_callback_ptr = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut rs2_device_list,
@@ -1006,8 +1023,10 @@ pub const rs2_camera_info_RS2_CAMERA_INFO_PRODUCT_LINE: rs2_camera_info = 10;
 pub const rs2_camera_info_RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER: rs2_camera_info = 11;
 ///< Firmware update ID
 pub const rs2_camera_info_RS2_CAMERA_INFO_FIRMWARE_UPDATE_ID: rs2_camera_info = 12;
+///< IP address for remote camera.
+pub const rs2_camera_info_RS2_CAMERA_INFO_IP_ADDRESS: rs2_camera_info = 13;
 ///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
-pub const rs2_camera_info_RS2_CAMERA_INFO_COUNT: rs2_camera_info = 13;
+pub const rs2_camera_info_RS2_CAMERA_INFO_COUNT: rs2_camera_info = 14;
 /// \brief Read-only strings that can be queried from the device.
 ///Not all information attributes are available on all camera types.
 ///This information is mainly available for camera debug and troubleshooting and should not be used in applications.
@@ -1426,11 +1445,21 @@ extern "C" {
 }
 extern "C" {
     /// check if physical subdevice is supported
-    /// \param[in] device  input RealSense device
+    /// \param[in] sensor  input RealSense subdevice
     /// \param[out] error  if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return            list of stream profiles that given subdevice can provide, should be released by rs2_delete_profiles_list
     pub fn rs2_get_stream_profiles(
-        device: *mut rs2_sensor,
+        sensor: *mut rs2_sensor,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_stream_profile_list;
+}
+extern "C" {
+    /// check how subdevice is streaming
+    /// \param[in] sensor  input RealSense subdevice
+    /// \param[out] error  if non-null, receives any error that occurs during this call, otherwise, errors are ignored
+    /// \return            list of stream profiles that given subdevice is currently streaming, should be released by rs2_delete_profiles_list
+    pub fn rs2_get_active_streams(
+        sensor: *mut rs2_sensor,
         error: *mut *mut rs2_error,
     ) -> *mut rs2_stream_profile_list;
 }
@@ -2210,6 +2239,20 @@ extern "C" {
         error: *mut *mut rs2_error,
     );
 }
+extern "C" {
+    pub fn rs2_serialize_json(
+        dev: *mut rs2_device,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_raw_data_buffer;
+}
+extern "C" {
+    pub fn rs2_load_json(
+        dev: *mut rs2_device,
+        json_content: *const ::std::os::raw::c_void,
+        content_size: ::std::os::raw::c_uint,
+        error: *mut *mut rs2_error,
+    );
+}
 ///< Frame timestamp was measured in relation to the camera clock
 pub const rs2_timestamp_domain_RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK: rs2_timestamp_domain = 0;
 ///< Frame timestamp was measured in relation to the OS system clock
@@ -2424,6 +2467,11 @@ extern "C" {
         frame: *const rs2_frame,
         error: *mut *mut rs2_error,
     ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    /// retrieve the scaling factor to use when converting a depth frame's get_data() units to meters
+    /// \return float - depth, in meters, per 1 unit stored in the frame data
+    pub fn rs2_depth_frame_get_units(frame: *const rs2_frame, error: *mut *mut rs2_error) -> f32;
 }
 extern "C" {
     /// retrieve frame stride in bytes (number of bytes from start of line N to start of line N+1)
@@ -2686,7 +2734,7 @@ pub const rs2_option_RS2_OPTION_MOTION_RANGE: rs2_option = 15;
 pub const rs2_option_RS2_OPTION_FILTER_OPTION: rs2_option = 16;
 ///< The confidence level threshold used by the Depth algorithm pipe to set whether a pixel will get a valid range or will be marked with invalid range
 pub const rs2_option_RS2_OPTION_CONFIDENCE_THRESHOLD: rs2_option = 17;
-///< Emitter select: 0 � disable all emitters. 1 � enable laser. 2 � enable auto laser. 3 � enable LED.
+///< Emitter select: 0 – disable all emitters. 1 – enable laser. 2 – enable auto laser. 3 – enable LED.
 pub const rs2_option_RS2_OPTION_EMITTER_ENABLED: rs2_option = 18;
 ///< Number of frames the user is allowed to keep per stream. Trying to hold-on to more frames will cause frame-drops.
 pub const rs2_option_RS2_OPTION_FRAMES_QUEUE_SIZE: rs2_option = 19;
@@ -2734,7 +2782,7 @@ pub const rs2_option_RS2_OPTION_HOLES_FILL: rs2_option = 39;
 pub const rs2_option_RS2_OPTION_STEREO_BASELINE: rs2_option = 40;
 ///< Allows dynamically ajust the converge step value of the target exposure in Auto-Exposure algorithm
 pub const rs2_option_RS2_OPTION_AUTO_EXPOSURE_CONVERGE_STEP: rs2_option = 41;
-///< Impose Inter-camera HW synchronization mode. Applicable for D400/Rolling Shutter SKUs
+///< Impose Inter-camera HW synchronization mode. Applicable for D400/L500/Rolling Shutter SKUs
 pub const rs2_option_RS2_OPTION_INTER_CAM_SYNC_MODE: rs2_option = 42;
 ///< Select a stream to process
 pub const rs2_option_RS2_OPTION_STREAM_FILTER: rs2_option = 43;
@@ -2776,8 +2824,28 @@ pub const rs2_option_RS2_OPTION_LED_POWER: rs2_option = 60;
 pub const rs2_option_RS2_OPTION_ZERO_ORDER_ENABLED: rs2_option = 61;
 ///< Preserve previous map when starting
 pub const rs2_option_RS2_OPTION_ENABLE_MAP_PRESERVATION: rs2_option = 62;
+///< Enable/disable sensor shutdown when a free-fall is detected (on by default)
+pub const rs2_option_RS2_OPTION_FREEFALL_DETECTION_ENABLED: rs2_option = 63;
+///< Changes the exposure time of Avalanche Photo Diode in the receiver
+pub const rs2_option_RS2_OPTION_AVALANCHE_PHOTO_DIODE: rs2_option = 64;
+///< Changes the amount of sharpening in the post-processed image
+pub const rs2_option_RS2_OPTION_POST_PROCESSING_SHARPENING: rs2_option = 65;
+///< Changes the amount of sharpening in the pre-processed image
+pub const rs2_option_RS2_OPTION_PRE_PROCESSING_SHARPENING: rs2_option = 66;
+///< Control edges and background noise
+pub const rs2_option_RS2_OPTION_NOISE_FILTERING: rs2_option = 67;
+///< Enable\disable pixel invalidation
+pub const rs2_option_RS2_OPTION_INVALIDATION_BYPASS: rs2_option = 68;
+///< Change the depth ambient light see rs2_ambient_light for values
+pub const rs2_option_RS2_OPTION_AMBIENT_LIGHT: rs2_option = 69;
+///< The resolution mode: see rs2_sensor_mode for values
+pub const rs2_option_RS2_OPTION_SENSOR_MODE: rs2_option = 70;
+///< Enable Laser On constantly (GS SKU Only)
+pub const rs2_option_RS2_OPTION_EMITTER_ALWAYS_ON: rs2_option = 71;
+///< Depth Thermal Compensation for selected D400 SKUs
+pub const rs2_option_RS2_OPTION_THERMAL_COMPENSATION: rs2_option = 72;
 ///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
-pub const rs2_option_RS2_OPTION_COUNT: rs2_option = 63;
+pub const rs2_option_RS2_OPTION_COUNT: rs2_option = 73;
 /// \brief Defines general configuration controls.
 ///These can generally be mapped to camera UVC controls, and can be set / queried at any time unless stated otherwise.
 pub type rs2_option = u32;
@@ -2829,6 +2897,7 @@ pub const rs2_rs400_visual_preset_RS2_RS400_VISUAL_PRESET_MEDIUM_DENSITY: rs2_rs
     5;
 pub const rs2_rs400_visual_preset_RS2_RS400_VISUAL_PRESET_REMOVE_IR_PATTERN:
     rs2_rs400_visual_preset = 6;
+///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
 pub const rs2_rs400_visual_preset_RS2_RS400_VISUAL_PRESET_COUNT: rs2_rs400_visual_preset = 7;
 /// \brief For RS400 devices: provides optimized settings (presets) for specific types of usage.
 pub type rs2_rs400_visual_preset = u32;
@@ -2837,9 +2906,40 @@ extern "C" {
         preset: rs2_rs400_visual_preset,
     ) -> *const ::std::os::raw::c_char;
 }
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_CUSTOM: rs2_l500_visual_preset = 0;
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_DEFAULT: rs2_l500_visual_preset = 1;
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_NO_AMBIENT: rs2_l500_visual_preset = 2;
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_LOW_AMBIENT: rs2_l500_visual_preset = 3;
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_MAX_RANGE: rs2_l500_visual_preset = 4;
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_SHORT_RANGE: rs2_l500_visual_preset = 5;
+///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
+pub const rs2_l500_visual_preset_RS2_L500_VISUAL_PRESET_COUNT: rs2_l500_visual_preset = 6;
+/// \brief For L500 devices: provides optimized settings (presets) for specific types of usage.
+pub type rs2_l500_visual_preset = u32;
+extern "C" {
+    pub fn rs2_l500_visual_preset_to_string(
+        preset: rs2_l500_visual_preset,
+    ) -> *const ::std::os::raw::c_char;
+}
+pub const rs2_sensor_mode_RS2_SENSOR_MODE_VGA: rs2_sensor_mode = 0;
+pub const rs2_sensor_mode_RS2_SENSOR_MODE_XGA: rs2_sensor_mode = 1;
+///< Number of enumeration values. Not a valid input: intended to be used in for-loops.
+pub const rs2_sensor_mode_RS2_SENSOR_MODE_COUNT: rs2_sensor_mode = 2;
+/// \brief For setting the camera_mode option
+pub type rs2_sensor_mode = u32;
+extern "C" {
+    pub fn rs2_sensor_mode_to_string(preset: rs2_sensor_mode) -> *const ::std::os::raw::c_char;
+}
+pub const rs2_ambient_light_RS2_AMBIENT_LIGHT_NO_AMBIENT: rs2_ambient_light = 1;
+pub const rs2_ambient_light_RS2_AMBIENT_LIGHT_LOW_AMBIENT: rs2_ambient_light = 2;
+/// \brief ambient light for RS2_OPTION_AMBIENT_LIGHT option.
+pub type rs2_ambient_light = u32;
+extern "C" {
+    pub fn rs2_ambient_light_to_string(preset: rs2_ambient_light) -> *const ::std::os::raw::c_char;
+}
 extern "C" {
     /// check if an option is read-only
-    /// \param[in] sensor   the RealSense sensor
+    /// \param[in] options  the options container
     /// \param[in] option   option id to be checked
     /// \param[out] error   if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return true if option is read-only
@@ -2851,7 +2951,7 @@ extern "C" {
 }
 extern "C" {
     /// read option value from the sensor
-    /// \param[in] sensor   the RealSense sensor
+    /// \param[in] options  the options container
     /// \param[in] option   option id to be queried
     /// \param[out] error   if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return value of the option
@@ -2863,7 +2963,7 @@ extern "C" {
 }
 extern "C" {
     /// write new value to sensor option
-    /// \param[in] sensor     the RealSense sensor
+    /// \param[in] options    the options container
     /// \param[in] option     option id to be queried
     /// \param[in] value      new value for the option
     /// \param[out] error     if non-null, receives any error that occurs during this call, otherwise, errors are ignored
@@ -2894,8 +2994,8 @@ extern "C" {
 }
 extern "C" {
     /// get option name
-    /// \param[in] options     options object
-    /// \param[in] option      option id to be checked
+    /// \param[in] options    the options container
+    /// \param[in] option     option id to be checked
     /// \param[out] error     if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return human-readable option name
     pub fn rs2_get_option_name(
@@ -2921,7 +3021,7 @@ extern "C" {
 }
 extern "C" {
     /// check if particular option is supported by a subdevice
-    /// \param[in] sensor     the RealSense sensor
+    /// \param[in] options    the options container
     /// \param[in] option     option id to be checked
     /// \param[out] error     if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return true if option is supported
@@ -2952,7 +3052,7 @@ extern "C" {
 }
 extern "C" {
     /// get option description
-    /// \param[in] sensor     the RealSense sensor
+    /// \param[in] options    the options container
     /// \param[in] option     option id to be checked
     /// \param[out] error     if non-null, receives any error that occurs during this call, otherwise, errors are ignored
     /// \return human-readable option description
@@ -2964,7 +3064,7 @@ extern "C" {
 }
 extern "C" {
     /// get option value description (in case specific option value hold special meaning)
-    /// \param[in] device     the RealSense device
+    /// \param[in] options    the options container
     /// \param[in] option     option id to be checked
     /// \param[in] value      value of the option
     /// \param[out] error     if non-null, receives any error that occurs during this call, otherwise, errors are ignored
@@ -3525,6 +3625,45 @@ extern "C" {
         file_path: *const ::std::os::raw::c_char,
         error: *mut *mut rs2_error,
     );
+}
+extern "C" {
+    pub fn rs2_log_to_callback_cpp(
+        min_severity: rs2_log_severity,
+        callback: *mut rs2_log_callback,
+        error: *mut *mut rs2_error,
+    );
+}
+extern "C" {
+    pub fn rs2_log_to_callback(
+        min_severity: rs2_log_severity,
+        callback: rs2_log_callback_ptr,
+        arg: *mut ::std::os::raw::c_void,
+        error: *mut *mut rs2_error,
+    );
+}
+extern "C" {
+    pub fn rs2_get_log_message_line_number(
+        msg: *const rs2_log_message,
+        error: *mut *mut rs2_error,
+    ) -> ::std::os::raw::c_uint;
+}
+extern "C" {
+    pub fn rs2_get_log_message_filename(
+        msg: *const rs2_log_message,
+        error: *mut *mut rs2_error,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn rs2_get_raw_log_message(
+        msg: *const rs2_log_message,
+        error: *mut *mut rs2_error,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn rs2_get_full_log_message(
+        msg: *const rs2_log_message,
+        error: *mut *mut rs2_error,
+    ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
     /// Add custom message into librealsense log
