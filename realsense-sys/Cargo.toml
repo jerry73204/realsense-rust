@@ -28,3 +28,6 @@ vcpkg = { version = "0.2" }
 default = []
 buildtime-bindgen = ["bindgen"]
 doc-only = []
+
+[package.metadata.docs.rs]
+features = ["doc-only"]

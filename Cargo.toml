@@ -32,3 +32,6 @@ device-test = []
 with-nalgebra = ["nalgebra"]
 with-image = ["image"]
 doc-only = ["realsense-sys/doc-only"]
+
+[package.metadata.docs.rs]
+features = ["doc-only"]
