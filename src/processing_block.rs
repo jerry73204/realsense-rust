@@ -174,9 +174,9 @@ where
         Ok(output)
     }
 
-    unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_processing_block>, FrameQueue) {
+    unsafe fn take(self) -> (NonNull<realsense_sys::rs2_processing_block>, FrameQueue) {
         let ptr = self.ptr.clone();
-        let queue = std::mem::replace(&mut self.queue, { MaybeUninit::uninit().assume_init() });
+        let queue = self.queue.unsafe_clone();
         std::mem::forget(self);
         (ptr, queue)
     }

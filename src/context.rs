@@ -93,6 +93,10 @@ impl Context {
         Ok(())
     }
 
+    pub(crate) unsafe fn unsafe_clone(&self) -> Self {
+        Self { ptr: self.ptr }
+    }
+
     // /// Remove device file from context. (unimplemented)
     // pub fn remove_device<P>(&mut self, file: P) -> RsResult<()>
     // where

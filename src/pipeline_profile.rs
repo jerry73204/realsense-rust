@@ -48,6 +48,10 @@ impl PipelineProfile {
     pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_pipeline_profile>) -> Self {
         Self { ptr }
     }
+
+    pub(crate) unsafe fn unsafe_clone(&self) -> Self {
+        Self { ptr: self.ptr }
+    }
 }
 
 impl Drop for PipelineProfile {

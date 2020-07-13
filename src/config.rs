@@ -54,6 +54,10 @@ impl Config {
         };
         Ok(self)
     }
+
+    pub(crate) unsafe fn unsafe_clone(&self) -> Self {
+        Self { ptr: self.ptr }
+    }
 }
 
 impl Drop for Config {

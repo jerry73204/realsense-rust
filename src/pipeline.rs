@@ -15,7 +15,9 @@ pub mod marker {
     use super::*;
 
     /// Marker trait for pipeline marker types.
-    pub trait PipelineState {}
+    pub trait PipelineState {
+        unsafe fn unsafe_clone(&self) -> Self;
+    }
 
     /// A marker type indicating the [Pipeline] is started.
     #[derive(Debug)]
@@ -24,13 +26,24 @@ pub mod marker {
         pub config: Option<Config>,
     }
 
-    impl PipelineState for Active {}
+    impl PipelineState for Active {
+        unsafe fn unsafe_clone(&self) -> Self {
+            Self {
+                profile: self.profile.unsafe_clone(),
+                config: self.config.as_ref().map(|config| config.unsafe_clone()),
+            }
+        }
+    }
 
     /// A marker type indicating the [Pipeline] is stopped.
     #[derive(Debug)]
     pub struct Inactive;
 
-    impl PipelineState for Inactive {}
+    impl PipelineState for Inactive {
+        unsafe fn unsafe_clone(&self) -> Self {
+            Self
+        }
+    }
 }
 
 /// Represents the data pipeline from a RealSense device.
@@ -283,11 +296,11 @@ impl<State> Pipeline<State>
 where
     State: marker::PipelineState,
 {
-    unsafe fn take(mut self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
+    unsafe fn take(self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
         // take fields without invoking drop()
         let ptr = self.ptr.clone();
-        let context = std::mem::replace(&mut self.context, { MaybeUninit::uninit().assume_init() });
-        let state = std::mem::replace(&mut self.state, { MaybeUninit::uninit().assume_init() });
+        let context = self.context.unsafe_clone();
+        let state = self.state.unsafe_clone();
         std::mem::forget(self);
 
         (ptr, context, state)
