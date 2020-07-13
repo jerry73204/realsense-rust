@@ -43,6 +43,11 @@ impl StreamProfileList {
         }
     }
 
+    /// Checks if the profile list is empty.
+    pub fn is_empty(&mut self) -> RsResult<bool> {
+        Ok(self.len()? == 0)
+    }
+
     /// Turns into iterable [StreamProfileListIntoIter] instance.
     pub fn try_into_iter(mut self) -> RsResult<StreamProfileListIntoIter> {
         let len = self.len()?;
@@ -57,7 +62,7 @@ impl StreamProfileList {
     }
 
     pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_stream_profile_list> {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         std::mem::forget(self);
         ptr
     }

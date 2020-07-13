@@ -175,7 +175,7 @@ where
     }
 
     unsafe fn take(self) -> (NonNull<realsense_sys::rs2_processing_block>, FrameQueue) {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         let queue = self.queue.unsafe_clone();
         std::mem::forget(self);
         (ptr, queue)

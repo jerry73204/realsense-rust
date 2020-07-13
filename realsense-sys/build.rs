@@ -138,15 +138,13 @@ where
             }
         }
 
-        if major_opt.is_some() && minor_opt.is_some() && patch_opt.is_some() && build_opt.is_some()
-        {
+        if let (Some(major), Some(minor), Some(patch), Some(build)) = (&major_opt, &minor_opt, &patch_opt, &build_opt) {
             let version = Version {
-                major: major_opt.unwrap(),
-                minor: minor_opt.unwrap(),
-                patch: patch_opt.unwrap(),
-                build: build_opt.unwrap(),
+                major: major.to_owned(),
+                minor: minor.to_owned(),
+                patch: patch.to_owned(),
+                build: build.to_owned(),
             };
-
             return Some(version);
         }
     }
@@ -175,8 +173,8 @@ struct Version {
     build: String,
 }
 
-impl Version {
-    pub fn to_string(&self) -> String {
+impl ToString for Version {
+    fn to_string(&self) -> String {
         let Self {
             major,
             minor,

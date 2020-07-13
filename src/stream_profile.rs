@@ -162,7 +162,7 @@ where
     }
 
     pub(crate) unsafe fn take(self) -> (NonNull<realsense_sys::rs2_stream_profile>, bool) {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         let from_clone = self.from_clone;
         std::mem::forget(self);
         (ptr, from_clone)
@@ -253,11 +253,11 @@ impl StreamProfile<marker::Video> {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            let resolution = Resolution {
+
+            Resolution {
                 width: width.assume_init() as usize,
                 height: height.assume_init() as usize,
-            };
-            resolution
+            }
         };
         Ok(resolution)
     }

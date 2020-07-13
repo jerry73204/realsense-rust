@@ -27,7 +27,6 @@ pub trait ToOptions {
             };
 
             let handles = (0..len)
-                .into_iter()
                 .map(|index| {
                     let mut checker = ErrorChecker::new();
                     let val = realsense_sys::rs2_get_option_from_list(
@@ -38,7 +37,7 @@ pub trait ToOptions {
                     checker.check()?;
                     let option = Rs2Option::from_u32(val).unwrap();
                     let handle = OptionHandle {
-                        ptr: options_ptr.clone(),
+                        ptr: options_ptr,
                         option,
                     };
 

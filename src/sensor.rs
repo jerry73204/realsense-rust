@@ -274,7 +274,7 @@ where
     }
 
     pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_sensor> {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         std::mem::forget(self);
         ptr
     }

@@ -210,8 +210,16 @@ where
 
     fn ptr(&self) -> NonNull<realsense_sys::rs2_frame>;
 
+    /// Destruct and return the raw pointer. It is intended for internal use only.
+    ///
+    /// # Safety
+    /// You have to manage the lifetime of internal pointer by calling this method.
     unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame>;
 
+    /// Construct from a raw pointer. It is intended for internal use only.
+    ///
+    /// # Safety
+    /// You have to ensure the pointer is valid.
     unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self;
 }
 
@@ -527,7 +535,7 @@ where
     }
 
     unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame> {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         std::mem::forget(self);
         ptr
     }
@@ -645,6 +653,11 @@ impl Frame<marker::Composite> {
             len as usize
         };
         Ok(len)
+    }
+
+    /// Checks if the composite-frame contains no sub-frames.
+    pub fn is_empty(&self) -> RsResult<bool> {
+        Ok(self.len()? == 0)
     }
 
     /// Gets the frame in frameset by index.

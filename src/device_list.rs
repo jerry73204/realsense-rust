@@ -55,8 +55,13 @@ impl DeviceList {
         Ok(iter)
     }
 
+    /// Checks if the device list is empty.
+    pub fn is_empty(&self) -> RsResult<bool> {
+        Ok(self.len()? == 0)
+    }
+
     pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_device_list> {
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         std::mem::forget(self);
         ptr
     }

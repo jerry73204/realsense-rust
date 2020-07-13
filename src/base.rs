@@ -76,8 +76,7 @@ impl Extrinsics {
     #[cfg(feature = "with-nalgebra")]
     pub fn to_isometry(&self) -> Isometry3<f32> {
         let rotation = {
-            let matrix =
-                MatrixMN::<f32, U3, U3>::from_iterator(self.0.rotation.iter().map(|val| *val));
+            let matrix = MatrixMN::<f32, U3, U3>::from_iterator(self.0.rotation.iter().copied());
             UnitQuaternion::from_matrix(&matrix)
         };
         let translation = {

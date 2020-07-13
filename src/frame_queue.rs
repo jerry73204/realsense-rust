@@ -60,7 +60,7 @@ impl FrameQueue {
 
             match (timeout, checker.check()) {
                 (None, Err(RsError::Timeout(..))) => continue,
-                tuple @ _ => {
+                tuple => {
                     let (_, result) = tuple;
                     result?;
                 }

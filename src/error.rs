@@ -24,7 +24,7 @@ impl ErrorChecker {
         self.checked = true;
         match NonNull::new(self.ptr) {
             Some(nonnull) => {
-                let msg = get_error_message(nonnull.clone());
+                let msg = get_error_message(nonnull);
                 let err = if msg.starts_with("Frame didn't arrive within ") {
                     Error::Timeout(nonnull)
                 } else if msg.starts_with("object doesn\'t support option #") {
@@ -60,10 +60,10 @@ impl Error {
     }
 
     pub(crate) fn get_ptr(&self) -> NonNull<realsense_sys::rs2_error> {
-        match self {
-            Error::Timeout(ptr) => ptr.clone(),
-            Error::UnsupportedOption(ptr) => ptr.clone(),
-            Error::Other(ptr) => ptr.clone(),
+        match *self {
+            Error::Timeout(ptr) => ptr,
+            Error::UnsupportedOption(ptr) => ptr,
+            Error::Other(ptr) => ptr,
         }
     }
 }

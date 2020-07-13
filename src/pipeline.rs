@@ -16,6 +16,10 @@ pub mod marker {
 
     /// Marker trait for pipeline marker types.
     pub trait PipelineState {
+        /// Clone the state with the underlying pointer. It is intended for internal use only.
+        ///
+        /// # Safety
+        /// You can to prevent [Drop::drop] to be called twice by calling this method.
         unsafe fn unsafe_clone(&self) -> Self;
     }
 
@@ -198,7 +202,7 @@ impl Pipeline<marker::Active> {
 
             match (timeout, checker.check()) {
                 (None, Err(RsError::Timeout(..))) => continue,
-                tuple @ _ => {
+                tuple => {
                     let (_, result) = tuple;
                     result?;
                 }
@@ -298,7 +302,7 @@ where
 {
     unsafe fn take(self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
         // take fields without invoking drop()
-        let ptr = self.ptr.clone();
+        let ptr = self.ptr;
         let context = self.context.unsafe_clone();
         let state = self.state.unsafe_clone();
         std::mem::forget(self);
