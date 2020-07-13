@@ -9,5 +9,5 @@ This crate finds and links RealSense SDK version 2 at minimum. It detects `reals
 To use this crate, add this line in your `Cargo.toml`.
 
 ```toml
-realsense-sys = "^0.2.1"
+realsense-sys = "0.2"
 ```
