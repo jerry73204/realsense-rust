@@ -1,8 +1,8 @@
 #![cfg(feature = "with-image")]
 #![cfg(feature = "with-nalgebra")]
 
-use crossbeam::channel;
 use anyhow::Result;
+use crossbeam::channel;
 use image::{DynamicImage, ImageFormat};
 use kiss3d::{
     light::Light,

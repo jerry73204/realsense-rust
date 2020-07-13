@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use realsense_rust::Error as RsError;
 use realsense_rust::{Format as RsFormat, StreamKind};
 use std::time::Duration;
