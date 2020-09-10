@@ -759,7 +759,7 @@ impl Frame<marker::Pose> {
 /// UV texture coordinates.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct texture_coordinate {
+pub struct TextureCoordinate {
     pub u: f32,
     pub v: f32,
 }
@@ -770,8 +770,7 @@ impl Frame<marker::Points> {
         let n_points = self.points_count()?;
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr = realsense_sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             let slice = std::slice::from_raw_parts::<realsense_sys::rs2_vertex>(ptr, n_points);
             Ok(slice)
@@ -779,16 +778,16 @@ impl Frame<marker::Points> {
     }
 
     /// Gets texture coordinates of each point of point cloud.
-    pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [texture_coordinate]> {
+    pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [TextureCoordinate]> {
         unsafe {
             let n_points = self.points_count()?;
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_frame_texture_coordinates(
                 self.ptr.as_ptr(),
                 checker.inner_mut_ptr(),
-            ) as *const texture_coordinate;
+            ) as *const TextureCoordinate;
             checker.check()?;
-            let slice = std::slice::from_raw_parts::<texture_coordinate>(ptr, n_points);
+            let slice = std::slice::from_raw_parts::<TextureCoordinate>(ptr, n_points);
             Ok(slice)
         }
     }
