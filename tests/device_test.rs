@@ -9,6 +9,7 @@ use realsense_rust::{
 };
 use std::{sync::Mutex, time::Duration};
 use tokio::runtime::Runtime;
+type Fallible<T> = Result<T, anyhow::Error>;
 
 lazy_static! {
     /// this lock prevenst multiple tests control RealSense device concurrently
@@ -80,7 +81,7 @@ fn async_test() -> Result<()> {
             }
         }
 
-        Result::Ok(())
+        Fallible::Ok(())
     })?;
 
     *counter += 1;
