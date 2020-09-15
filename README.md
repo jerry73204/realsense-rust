@@ -11,7 +11,7 @@ To add this crate to your project,
 
 ```toml
 [dependencies]
-realsense-rust = "0.3"
+realsense-rust = "0.4"
 ```
 
 
@@ -19,7 +19,7 @@ If you have troubles compiling this project, perhaps your system is using older 
 
 ```toml
 [dependencies]
-realsense-rust = { version = "0.3", features = ["buildtime-bindgen"] }
+realsense-rust = { version = "0.4", features = ["buildtime-bindgen"] }
 ```
 
 ## Cargo Features
