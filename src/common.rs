@@ -30,6 +30,7 @@ pub use std::{
     os::raw::{c_int, c_uchar, c_uint, c_void},
     path::Path,
     ptr::NonNull,
+    slice,
     sync::atomic::{AtomicPtr, Ordering},
     time::Duration,
 };

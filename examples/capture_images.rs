@@ -17,13 +17,19 @@ mod example {
     use std::time::Duration;
 
     #[derive(Debug)]
+    struct PointWithColor {
+        vertex: Point3<f32>,
+        color: Point3<f32>,
+    }
+
+    #[derive(Debug)]
     struct PcdVizState {
-        rx: channel::Receiver<Vec<Point3<f32>>>,
-        points: Option<Vec<Point3<f32>>>,
+        rx: channel::Receiver<Vec<PointWithColor>>,
+        points: Option<Vec<PointWithColor>>,
     }
 
     impl PcdVizState {
-        pub fn new(rx: channel::Receiver<Vec<Point3<f32>>>) -> Self {
+        pub fn new(rx: channel::Receiver<Vec<PointWithColor>>) -> Self {
             let state = Self { rx, points: None };
             state
         }
@@ -56,7 +62,7 @@ mod example {
             // draw points
             if let Some(points) = &self.points {
                 for point in points.iter() {
-                    window.draw_point(point, &Point3::new(1.0, 1.0, 1.0));
+                    window.draw_point(&point.vertex, &point.color);
                 }
             }
         }
@@ -128,15 +134,40 @@ mod example {
                 )?;
             }
 
+            // access texture data
+            let pixel_data = color_frame.data()?;
+            let frame_width = color_frame.width()? as f32;
+            let frame_height = color_frame.height()? as f32;
+            let bytes_per_pixel = color_frame.bits_per_pixel()? / 8;
+            let pixel_stride = color_frame.stride_in_bytes()?;
+
             // compute point cloud
             pointcloud.map_to(color_frame.clone())?;
             let points_frame = pointcloud.calculate(depth_frame.clone())?;
             let points = points_frame
                 .vertices()?
                 .iter()
-                .map(|vertex| {
+                .zip(points_frame.texture_coordinates()?)
+                .map(|(vertex, tex_coord)| {
                     let [x, y, z] = vertex.xyz;
-                    Point3::new(x, y, z)
+
+                    let mut color = Point3::new(0f32, 0f32, 0f32);
+                    let (u, v) = (tex_coord.u, tex_coord.v);
+                    if u >= 0f32 && u < 1f32 && v >= 0f32 && v < 1f32 {
+                        let x = (u * frame_width) as usize;
+                        let y = (v * frame_height) as usize;
+                        let idx = x * bytes_per_pixel + y * pixel_stride;
+
+                        let r = pixel_data[idx] as f32;
+                        let g = pixel_data[idx + 1] as f32;
+                        let b = pixel_data[idx + 2] as f32;
+                        color = Point3::new(r, g, b) / 255f32;
+                    }
+
+                    PointWithColor {
+                        vertex: Point3::new(x, y, z),
+                        color,
+                    }
                 })
                 .collect::<Vec<_>>();
 

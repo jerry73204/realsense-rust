@@ -756,6 +756,18 @@ impl Frame<marker::Pose> {
     }
 }
 
+/// UV texture coordinates.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TextureCoordinate {
+    // SAFETY: See safe_transmute::TriviallyTransmutable trait implementation for this type.
+    pub u: f32,
+    pub v: f32,
+}
+
+// SAFETY: TextureCoordinate is a POD type.
+unsafe impl safe_transmute::TriviallyTransmutable for TextureCoordinate {}
+
 impl Frame<marker::Points> {
     /// Gets vertices of point cloud.
     pub fn vertices<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_vertex]> {
@@ -771,7 +783,7 @@ impl Frame<marker::Points> {
     }
 
     /// Gets texture coordinates of each point of point cloud.
-    pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_pixel]> {
+    pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [TextureCoordinate]> {
         unsafe {
             let n_points = self.points_count()?;
             let mut checker = ErrorChecker::new();
@@ -780,8 +792,21 @@ impl Frame<marker::Points> {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            let slice = std::slice::from_raw_parts::<realsense_sys::rs2_pixel>(ptr, n_points);
-            Ok(slice)
+
+            // SAFETY:
+            // The librealsense2 C++ API directly casts the rs2_pixel* returned from
+            // rs2_get_frame_texture_coordinates() into a texture_coordinate*, thereby
+            // re-interpreting [[c_int; 2]; N] as [[c_float; 2]; N] values.
+            // Note that C does not generally guarantee that sizeof(int) == sizeof(float).
+            let slice = slice::from_raw_parts::<realsense_sys::rs2_pixel>(ptr, n_points);
+            let bytes = slice::from_raw_parts::<u8>(
+                slice.as_ptr() as *const u8,
+                std::mem::size_of_val(slice),
+            );
+            let tcs =
+                safe_transmute::transmute_many::<TextureCoordinate, PedanticGuard>(bytes).unwrap();
+            debug_assert_eq!(tcs.len(), n_points);
+            Ok(tcs)
         }
     }
 
