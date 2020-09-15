@@ -774,7 +774,8 @@ impl Frame<marker::Points> {
         let n_points = self.points_count()?;
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr =
+                realsense_sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             let slice = std::slice::from_raw_parts::<realsense_sys::rs2_vertex>(ptr, n_points);
             Ok(slice)
@@ -797,9 +798,13 @@ impl Frame<marker::Points> {
             // rs2_get_frame_texture_coordinates() into a texture_coordinate*, thereby
             // re-interpreting [[c_int; 2]; N] as [[c_float; 2]; N] values.
             // Note that C does not generally guarantee that sizeof(int) == sizeof(float).
-            let slice = std::slice::from_raw_parts::<realsense_sys::rs2_pixel>(ptr, n_points);
-            let bytes = std::slice::from_raw_parts::<u8>(slice.as_ptr() as *const u8, std::mem::size_of_val(slice));
-            let tcs = safe_transmute::transmute_many::<TextureCoordinate, PedanticGuard>(bytes).unwrap();
+            let slice = slice::from_raw_parts::<realsense_sys::rs2_pixel>(ptr, n_points);
+            let bytes = slice::from_raw_parts::<u8>(
+                slice.as_ptr() as *const u8,
+                std::mem::size_of_val(slice),
+            );
+            let tcs =
+                safe_transmute::transmute_many::<TextureCoordinate, PedanticGuard>(bytes).unwrap();
             debug_assert_eq!(tcs.len(), n_points);
             Ok(tcs)
         }
