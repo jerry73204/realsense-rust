@@ -21,9 +21,9 @@ where
     fn metadata(&self, kind: FrameMetaDataValue) -> Result<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_metadata(
+            let val = sys::rs2_get_frame_metadata(
                 self.ptr().as_ptr(),
-                kind as realsense_sys::rs2_frame_metadata_value,
+                kind as sys::rs2_frame_metadata_value,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -35,8 +35,7 @@ where
     fn number(&self) -> Result<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_number(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            let val = sys::rs2_get_frame_number(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as u64)
         }
@@ -46,10 +45,7 @@ where
     fn data_size(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_data_size(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val = sys::rs2_get_frame_data_size(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -59,10 +55,7 @@ where
     fn timestamp(&self) -> Result<f64> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_timestamp(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val = sys::rs2_get_frame_timestamp(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as f64)
         }
@@ -72,10 +65,8 @@ where
     fn timestamp_domain(&self) -> Result<TimestampDomain> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_timestamp_domain(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val =
+                sys::rs2_get_frame_timestamp_domain(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             val
         };
@@ -88,10 +79,9 @@ where
         let size = self.data_size()?;
         let slice = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_get_frame_data(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            let ptr = sys::rs2_get_frame_data(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            std::slice::from_raw_parts::<u8>(ptr.cast::<u8>(), size)
+            slice::from_raw_parts::<u8>(ptr.cast::<u8>(), size)
         };
         Ok(slice)
     }
@@ -100,10 +90,9 @@ where
     fn sensor(&self) -> Result<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_get_frame_sensor(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            let ptr = sys::rs2_get_frame_sensor(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            AnySensor::from_ptr(NonNull::new(ptr).unwrap())
+            AnySensor::from_raw(ptr)
         };
         Ok(sensor)
     }
@@ -112,12 +101,10 @@ where
     fn stream_profile(&self) -> Result<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_frame_stream_profile(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_get_frame_stream_profile(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            StreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false)
+            StreamProfile::from_raw_parts(ptr as *mut _, false)
         };
         Ok(profile)
     }
@@ -126,25 +113,26 @@ where
         unsafe {
             // add reference
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_frame_add_ref(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            sys::rs2_frame_add_ref(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            Ok(Self::from_ptr(self.ptr()))
+            Ok(Self::from_raw(self.ptr().as_ptr()))
         }
     }
 
-    fn ptr(&self) -> NonNull<realsense_sys::rs2_frame>;
+    #[doc(hidden)]
+    fn ptr(&self) -> NonNull<sys::rs2_frame>;
 
     /// Destruct and return the raw pointer. It is intended for internal use only.
     ///
     /// # Safety
     /// You have to manage the lifetime of internal pointer by calling this method.
-    unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame>;
+    fn into_raw(self) -> *mut sys::rs2_frame;
 
     /// Construct from a raw pointer. It is intended for internal use only.
     ///
     /// # Safety
     /// You have to ensure the pointer is valid.
-    unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self;
+    unsafe fn from_raw(ptr: *mut sys::rs2_frame) -> Self;
 }
 
 /// The trait provides methods on frames with video data.
@@ -164,8 +152,7 @@ where
     fn width(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_width(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            let val = sys::rs2_get_frame_width(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -175,8 +162,7 @@ where
     fn height(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val =
-                realsense_sys::rs2_get_frame_height(self.ptr().as_ptr(), checker.inner_mut_ptr());
+            let val = sys::rs2_get_frame_height(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -186,10 +172,8 @@ where
     fn stride_in_bytes(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_stride_in_bytes(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val =
+                sys::rs2_get_frame_stride_in_bytes(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -199,10 +183,8 @@ where
     fn bits_per_pixel(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_bits_per_pixel(
-                self.ptr().as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val =
+                sys::rs2_get_frame_bits_per_pixel(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -221,7 +203,7 @@ where
             Format::Bgr8 => {
                 let channels = 3;
 
-                let sample_size = std::mem::size_of::<u8>();
+                let sample_size = mem::size_of::<u8>();
                 debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
                 let stride_in_samples = stride_in_bytes / sample_size;
@@ -250,7 +232,7 @@ where
             Format::Bgra8 => {
                 let channels = 4;
 
-                let sample_size = std::mem::size_of::<u8>();
+                let sample_size = mem::size_of::<u8>();
                 debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
                 let stride_in_samples = stride_in_bytes / sample_size;
@@ -279,7 +261,7 @@ where
             Format::Rgb8 => {
                 let channels = 3;
 
-                let sample_size = std::mem::size_of::<u8>();
+                let sample_size = mem::size_of::<u8>();
                 debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
                 let stride_in_samples = stride_in_bytes / sample_size;
@@ -308,7 +290,7 @@ where
             Format::Rgba8 => {
                 let channels = 4;
 
-                let sample_size = std::mem::size_of::<u8>();
+                let sample_size = mem::size_of::<u8>();
                 debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
                 let stride_in_samples = stride_in_bytes / sample_size;
@@ -335,7 +317,7 @@ where
                 Rs2Image::Rgba8(image)
             }
             Format::Z16 => {
-                let sample_size = std::mem::size_of::<u16>();
+                let sample_size = mem::size_of::<u16>();
                 debug_assert_eq!(stride_in_bytes % sample_size, 0, "please report bug");
 
                 let depth_data: &[u16] =
@@ -382,7 +364,7 @@ where
     fn distance(&self, x: usize, y: usize) -> Result<f32> {
         let distance = unsafe {
             let mut checker = ErrorChecker::new();
-            let distance = realsense_sys::rs2_depth_frame_get_distance(
+            let distance = sys::rs2_depth_frame_get_distance(
                 self.ptr().as_ptr(),
                 x as c_int,
                 y as c_int,
@@ -414,7 +396,7 @@ where
     fn baseline(&self) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
+            let baseline = sys::rs2_depth_stereo_frame_get_baseline(
                 self.ptr().as_ptr(),
                 checker.inner_mut_ptr(),
             );
@@ -455,7 +437,7 @@ pub struct Frame<Kind>
 where
     Kind: frame_kind::FrameKind,
 {
-    pub(crate) ptr: NonNull<realsense_sys::rs2_frame>,
+    pub(crate) ptr: NonNull<sys::rs2_frame>,
     _phantom: PhantomData<Kind>,
 }
 
@@ -463,19 +445,19 @@ impl<Kind> GenericFrameEx for Frame<Kind>
 where
     Kind: frame_kind::FrameKind,
 {
-    fn ptr(&self) -> NonNull<realsense_sys::rs2_frame> {
+    fn ptr(&self) -> NonNull<sys::rs2_frame> {
         self.ptr
     }
 
-    unsafe fn take(self) -> NonNull<realsense_sys::rs2_frame> {
+    fn into_raw(self) -> *mut sys::rs2_frame {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_frame>) -> Self {
+    unsafe fn from_raw(ptr: *mut sys::rs2_frame) -> Self {
         Self {
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             _phantom: PhantomData,
         }
     }
@@ -502,9 +484,9 @@ impl AnyFrame {
     {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_frame_extendable_to(
+            let val = sys::rs2_is_frame_extendable_to(
                 self.ptr.as_ptr(),
-                Kind::EXTENSION as realsense_sys::rs2_extension,
+                Kind::EXTENSION as sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -512,22 +494,20 @@ impl AnyFrame {
         }
     }
 
-    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<Frame<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<result::Result<Frame<Kind>, Self>>
     where
         Kind: frame_kind::NonAnyFrameKind,
     {
-        unsafe {
-            let is_extendable = self.is_extendable_to::<Kind>()?;
-            if is_extendable {
-                let ptr = self.take();
-                let frame = Frame {
-                    ptr,
-                    _phantom: PhantomData,
-                };
-                Ok(Ok(frame))
-            } else {
-                Ok(Err(self))
-            }
+        let is_extendable = self.is_extendable_to::<Kind>()?;
+        if is_extendable {
+            let ptr = self.into_raw();
+            let frame = Frame {
+                ptr: NonNull::new(ptr).unwrap(),
+                _phantom: PhantomData,
+            };
+            Ok(Ok(frame))
+        } else {
+            Ok(Err(self))
         }
     }
 
@@ -578,10 +558,7 @@ impl CompositeFrame {
     pub fn len(&self) -> Result<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
-            let len = realsense_sys::rs2_embedded_frames_count(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let len = sys::rs2_embedded_frames_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             len as usize
         };
@@ -605,14 +582,11 @@ impl CompositeFrame {
         let frame = unsafe {
             // extract frame
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_extract_frame(
-                self.ptr.as_ptr(),
-                index as c_int,
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_extract_frame(self.ptr.as_ptr(), index as c_int, checker.inner_mut_ptr());
             checker.check()?;
 
-            Frame::from_ptr(NonNull::new(ptr).unwrap())
+            Frame::from_raw(ptr)
         };
         Ok(Some(frame))
     }
@@ -620,11 +594,11 @@ impl CompositeFrame {
     /// Unpacks the set of frames and turns into iterable [CompositeFrameIntoIter] instance.
     pub fn try_into_iter(self) -> Result<CompositeFrameIntoIter> {
         let len = self.len()?;
-        let ptr = unsafe { self.take() };
+        let ptr = self.into_raw();
         let iter = CompositeFrameIntoIter {
             index: 0,
             len,
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             fused: len == 0,
         };
         Ok(iter)
@@ -675,7 +649,7 @@ impl PoseFrame {
         let pose_data = unsafe {
             let mut checker = ErrorChecker::new();
             let mut pose_data = MaybeUninit::uninit();
-            realsense_sys::rs2_pose_frame_get_pose_data(
+            sys::rs2_pose_frame_get_pose_data(
                 self.ptr.as_ptr(),
                 pose_data.as_mut_ptr(),
                 checker.inner_mut_ptr(),
@@ -703,14 +677,13 @@ unsafe impl safe_transmute::TriviallyTransmutable for TextureCoordinate {}
 
 impl PointsFrame {
     /// Gets vertices of point cloud.
-    pub fn vertices<'a>(&'a self) -> Result<&'a [realsense_sys::rs2_vertex]> {
+    pub fn vertices<'a>(&'a self) -> Result<&'a [sys::rs2_vertex]> {
         let n_points = self.points_count()?;
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr = sys::rs2_get_frame_vertices(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            let slice = std::slice::from_raw_parts::<realsense_sys::rs2_vertex>(ptr, n_points);
+            let slice = slice::from_raw_parts::<sys::rs2_vertex>(ptr, n_points);
             Ok(slice)
         }
     }
@@ -720,10 +693,8 @@ impl PointsFrame {
         unsafe {
             let n_points = self.points_count()?;
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_frame_texture_coordinates(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_get_frame_texture_coordinates(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
 
             // SAFETY:
@@ -731,11 +702,9 @@ impl PointsFrame {
             // rs2_get_frame_texture_coordinates() into a texture_coordinate*, thereby
             // re-interpreting [[c_int; 2]; N] as [[c_float; 2]; N] values.
             // Note that C does not generally guarantee that sizeof(int) == sizeof(float).
-            let slice = slice::from_raw_parts::<realsense_sys::rs2_pixel>(ptr, n_points);
-            let bytes = slice::from_raw_parts::<u8>(
-                slice.as_ptr() as *const u8,
-                std::mem::size_of_val(slice),
-            );
+            let slice = slice::from_raw_parts::<sys::rs2_pixel>(ptr, n_points);
+            let bytes =
+                slice::from_raw_parts::<u8>(slice.as_ptr() as *const u8, mem::size_of_val(slice));
             let tcs =
                 safe_transmute::transmute_many::<TextureCoordinate, PedanticGuard>(bytes).unwrap();
             debug_assert_eq!(tcs.len(), n_points);
@@ -747,10 +716,7 @@ impl PointsFrame {
     pub fn points_count(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_frame_points_count(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val = sys::rs2_get_frame_points_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val as usize)
         }
@@ -797,7 +763,7 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_release_frame(self.ptr.as_ptr());
+            sys::rs2_release_frame(self.ptr.as_ptr());
         }
     }
 }
@@ -810,7 +776,7 @@ unsafe impl<Kind> Sync for Frame<Kind> where Kind: frame_kind::FrameKind {}
 pub struct CompositeFrameIntoIter {
     len: usize,
     index: usize,
-    ptr: NonNull<realsense_sys::rs2_frame>,
+    ptr: NonNull<sys::rs2_frame>,
     fused: bool,
 }
 
@@ -825,7 +791,7 @@ impl Iterator for CompositeFrameIntoIter {
         let ptr = unsafe {
             // extract frame
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_extract_frame(
+            let ptr = sys::rs2_extract_frame(
                 self.ptr.as_ptr(),
                 self.index as c_int,
                 checker.inner_mut_ptr(),
@@ -842,7 +808,7 @@ impl Iterator for CompositeFrameIntoIter {
             self.fused = true;
         }
 
-        let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+        let frame = unsafe { Frame::from_raw(ptr) };
         Some(Ok(frame))
     }
 }
@@ -852,7 +818,7 @@ impl FusedIterator for CompositeFrameIntoIter {}
 impl Drop for CompositeFrameIntoIter {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_release_frame(self.ptr.as_ptr());
+            sys::rs2_release_frame(self.ptr.as_ptr());
         }
     }
 }
@@ -862,7 +828,7 @@ impl Drop for CompositeFrameIntoIter {
 pub struct CompositeFrameIter {
     len: usize,
     index: usize,
-    ptr: NonNull<realsense_sys::rs2_frame>,
+    ptr: NonNull<sys::rs2_frame>,
     fused: bool,
 }
 
@@ -877,7 +843,7 @@ impl Iterator for CompositeFrameIter {
         let ptr = unsafe {
             // extract frame
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_extract_frame(
+            let ptr = sys::rs2_extract_frame(
                 self.ptr.as_ptr(),
                 self.index as c_int,
                 checker.inner_mut_ptr(),
@@ -894,7 +860,7 @@ impl Iterator for CompositeFrameIter {
             self.fused = true;
         }
 
-        let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+        let frame = unsafe { Frame::from_raw(ptr) };
         Some(Ok(frame))
     }
 }

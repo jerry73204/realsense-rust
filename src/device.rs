@@ -10,7 +10,7 @@ use crate::{
 /// Represents a device instance.
 #[derive(Debug)]
 pub struct Device {
-    pub(crate) ptr: NonNull<realsense_sys::rs2_device>,
+    pub(crate) ptr: NonNull<sys::rs2_device>,
 }
 
 impl Device {
@@ -18,9 +18,9 @@ impl Device {
     pub fn query_sensors(&self) -> Result<SensorList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_query_sensors(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr = sys::rs2_query_sensors(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            SensorList::from_ptr(NonNull::new(ptr).unwrap())
+            SensorList::from_raw(ptr)
         };
         Ok(list)
     }
@@ -28,7 +28,7 @@ impl Device {
     pub fn hardware_reset(&self) -> Result<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
         }
         Ok(())
@@ -93,9 +93,9 @@ impl Device {
 
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_device_info(
+            let ptr = sys::rs2_get_device_info(
                 self.ptr.as_ptr(),
-                kind as realsense_sys::rs2_camera_info,
+                kind as sys::rs2_camera_info,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -110,9 +110,9 @@ impl Device {
     pub fn is_info_supported(&self, kind: CameraInfo) -> Result<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_supports_device_info(
+            let val = sys::rs2_supports_device_info(
                 self.ptr.as_ptr(),
-                kind as realsense_sys::rs2_camera_info,
+                kind as sys::rs2_camera_info,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -121,15 +121,23 @@ impl Device {
         Ok(val != 0)
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_device>) -> Self {
-        Self { ptr }
+    pub fn into_raw(self) -> *mut sys::rs2_device {
+        let ptr = self.ptr;
+        mem::forget(self);
+        ptr.as_ptr()
+    }
+
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_device) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 }
 
 impl Drop for Device {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_device(self.ptr.as_ptr());
+            sys::rs2_delete_device(self.ptr.as_ptr());
         }
     }
 }

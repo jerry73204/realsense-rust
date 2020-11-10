@@ -34,7 +34,7 @@ pub struct ProcessingBlock<Kind>
 where
     Kind: processing_block_kind::ProcessingBlockKind,
 {
-    pub(crate) ptr: NonNull<realsense_sys::rs2_processing_block>,
+    pub(crate) ptr: NonNull<sys::rs2_processing_block>,
     queue: FrameQueue,
     _phantom: PhantomData<Kind>,
 }
@@ -68,13 +68,9 @@ where
         K: FrameKind,
     {
         unsafe {
-            let frame_ptr = input.take();
+            let frame_ptr = input.into_raw();
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_process_frame(
-                self.ptr.as_ptr(),
-                frame_ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            sys::rs2_process_frame(self.ptr.as_ptr(), frame_ptr, checker.inner_mut_ptr());
             checker.check()?;
         }
         let output = self.queue.wait(None)?;
@@ -86,39 +82,32 @@ where
         K: FrameKind,
     {
         unsafe {
-            let frame_ptr = input.take();
+            let frame_ptr = input.into_raw();
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_process_frame(
-                self.ptr.as_ptr(),
-                frame_ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            sys::rs2_process_frame(self.ptr.as_ptr(), frame_ptr, checker.inner_mut_ptr());
             checker.check()?;
         }
         let output = self.queue.wait_async(None).await?;
         Ok(output)
     }
 
-    unsafe fn take(self) -> (NonNull<realsense_sys::rs2_processing_block>, FrameQueue) {
+    pub fn into_raw_parts(self) -> (*mut sys::rs2_processing_block, FrameQueue) {
         let ptr = self.ptr;
-        let queue = self.queue.unsafe_clone();
-        std::mem::forget(self);
-        (ptr, queue)
+        let queue = unsafe { self.queue.unsafe_clone() };
+        mem::forget(self);
+        (ptr.as_ptr(), queue)
     }
 
-    pub(crate) unsafe fn from_parts(
-        ptr: NonNull<realsense_sys::rs2_processing_block>,
-        queue: FrameQueue,
-    ) -> Self {
+    pub unsafe fn from_raw_parts(ptr: *mut sys::rs2_processing_block, queue: FrameQueue) -> Self {
         Self {
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             queue,
             _phantom: PhantomData,
         }
     }
 
-    pub(crate) unsafe fn new_from_ptr_and_capacity(
-        ptr: NonNull<realsense_sys::rs2_processing_block>,
+    pub(crate) unsafe fn new_from_raw_and_capacity(
+        ptr: NonNull<sys::rs2_processing_block>,
         capacity: usize,
     ) -> Result<Self> {
         let queue = FrameQueue::with_capacity(capacity)?;
@@ -126,7 +115,7 @@ where
         // start processing
         {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_start_processing_queue(
+            sys::rs2_start_processing_queue(
                 ptr.as_ptr(),
                 queue.ptr.as_ptr(),
                 checker.inner_mut_ptr(),
@@ -142,10 +131,8 @@ where
         Ok(block)
     }
 
-    pub(crate) unsafe fn new_from_ptr(
-        ptr: NonNull<realsense_sys::rs2_processing_block>,
-    ) -> Result<Self> {
-        Self::new_from_ptr_and_capacity(ptr, 1)
+    pub(crate) unsafe fn new_from_raw(ptr: NonNull<sys::rs2_processing_block>) -> Result<Self> {
+        Self::new_from_raw_and_capacity(ptr, 1)
     }
 }
 
@@ -156,9 +143,9 @@ impl AnyProcessingBlock {
     {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_processing_block_extendable_to(
+            let val = sys::rs2_is_processing_block_extendable_to(
                 self.ptr.as_ptr(),
-                Kind::EXTENSION as realsense_sys::rs2_extension,
+                Kind::EXTENSION as sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -166,15 +153,15 @@ impl AnyProcessingBlock {
         }
     }
 
-    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<ProcessingBlock<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<result::Result<ProcessingBlock<Kind>, Self>>
     where
         Kind: processing_block_kind::ExtendableProcessingBlockKind,
     {
         unsafe {
             let is_extendable = self.is_extendable_to::<Kind>()?;
             if is_extendable {
-                let (ptr, queue) = self.take();
-                let block = ProcessingBlock::from_parts(ptr, queue);
+                let (ptr, queue) = self.into_raw_parts();
+                let block = ProcessingBlock::from_raw_parts(ptr, queue);
                 Ok(Ok(block))
             } else {
                 Ok(Err(self))
@@ -235,9 +222,9 @@ impl ThresholdFilter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_threshold(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_threshold(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -245,9 +232,9 @@ impl ThresholdFilter {
     pub fn with_options(min_dist: Option<f32>, max_dist: Option<f32>) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_threshold(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_threshold(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
 
         let options = processing_block.to_options()?;
@@ -266,9 +253,9 @@ impl SpatialFilter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_spatial_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_spatial_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -281,9 +268,9 @@ impl SpatialFilter {
     ) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
 
         let options = processing_block.to_options()?;
@@ -300,9 +287,9 @@ impl TemporalFilter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -314,9 +301,9 @@ impl TemporalFilter {
     ) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_temporal_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
 
         let options = processing_block.to_options()?;
@@ -332,9 +319,9 @@ impl DecimationFilter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_decimation_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_decimation_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -342,9 +329,9 @@ impl DecimationFilter {
     pub fn with_options(magnitude: f32) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_decimation_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_decimation_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
 
         let options = processing_block.to_options()?;
@@ -358,9 +345,9 @@ impl HoleFillingFilter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_hole_filling_filter_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_hole_filling_filter_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -383,12 +370,12 @@ impl DisparityFilter {
     pub fn with_options(transform_to_disparity: bool) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_disparity_transform_block(
+            let ptr = sys::rs2_create_disparity_transform_block(
                 transform_to_disparity as c_uchar,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -398,9 +385,9 @@ impl PointCloud {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_pointcloud(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_pointcloud(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -430,9 +417,8 @@ impl PointCloud {
             ..
         } = color_frame.stream_profile()?.get_data()?;
         let options = self.to_options()?;
-        options[&Rs2Option::StreamFilter].set_value(stream as realsense_sys::rs2_stream as f32)?;
-        options[&Rs2Option::StreamFormatFilter]
-            .set_value(format as realsense_sys::rs2_format as f32)?;
+        options[&Rs2Option::StreamFilter].set_value(stream as sys::rs2_stream as f32)?;
+        options[&Rs2Option::StreamFormatFilter].set_value(format as sys::rs2_format as f32)?;
         options[&Rs2Option::StreamIndexFilter].set_value(index as f32)?;
 
         self.process(color_frame)?;
@@ -464,9 +450,8 @@ impl PointCloud {
             ..
         } = color_frame.stream_profile()?.get_data()?;
         let options = self.to_options()?;
-        options[&Rs2Option::StreamFilter].set_value(stream as realsense_sys::rs2_stream as f32)?;
-        options[&Rs2Option::StreamFormatFilter]
-            .set_value(format as realsense_sys::rs2_format as f32)?;
+        options[&Rs2Option::StreamFilter].set_value(stream as sys::rs2_stream as f32)?;
+        options[&Rs2Option::StreamFormatFilter].set_value(format as sys::rs2_format as f32)?;
         options[&Rs2Option::StreamIndexFilter].set_value(index as f32)?;
 
         self.process_async(color_frame).await?;
@@ -478,9 +463,9 @@ impl YuyDecoder {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_yuy_decoder(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_yuy_decoder(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -490,9 +475,9 @@ impl UnitsTransform {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_units_transform(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_units_transform(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -502,9 +487,9 @@ impl Syncer {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_sync_processing_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_sync_processing_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -514,12 +499,9 @@ impl Align {
     pub fn create(align_to: StreamKind) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_align(
-                align_to as realsense_sys::rs2_stream,
-                checker.inner_mut_ptr(),
-            );
+            let ptr = sys::rs2_create_align(align_to as sys::rs2_stream, checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -529,9 +511,9 @@ impl Colorizer {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_colorizer(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_colorizer(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -539,9 +521,9 @@ impl Colorizer {
     pub fn with_options(color_scheme: ColorScheme) -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_colorizer(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_colorizer(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
 
         let options = processing_block.to_options()?;
@@ -561,10 +543,9 @@ impl HuffmanDepthDecompress {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_create_huffman_depth_decompress_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_huffman_depth_decompress_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -574,9 +555,9 @@ impl RatesPrinter {
     pub fn create() -> Result<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_rates_printer_block(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_rates_printer_block(checker.inner_mut_ptr());
             checker.check()?;
-            Self::new_from_ptr(NonNull::new(ptr).unwrap())?
+            Self::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(processing_block)
     }
@@ -586,8 +567,8 @@ impl<Kind> ToOptions for ProcessingBlock<Kind>
 where
     Kind: processing_block_kind::ProcessingBlockKind,
 {
-    fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
-        self.ptr.cast::<realsense_sys::rs2_options>()
+    fn get_options_ptr(&self) -> NonNull<sys::rs2_options> {
+        self.ptr.cast::<sys::rs2_options>()
     }
 }
 
@@ -597,7 +578,7 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_processing_block(self.ptr.as_ptr());
+            sys::rs2_delete_processing_block(self.ptr.as_ptr());
         }
     }
 }

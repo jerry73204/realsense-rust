@@ -9,7 +9,7 @@ use crate::{
 /// An iterable list of streams.
 #[derive(Debug)]
 pub struct StreamProfileList {
-    ptr: NonNull<realsense_sys::rs2_stream_profile_list>,
+    ptr: NonNull<sys::rs2_stream_profile_list>,
 }
 
 impl StreamProfileList {
@@ -19,13 +19,13 @@ impl StreamProfileList {
     pub fn get(&mut self, index: usize) -> Result<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_stream_profile(
+            let ptr = sys::rs2_get_stream_profile(
                 self.ptr.as_ptr(),
                 index as c_int,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            AnyStreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false)
+            AnyStreamProfile::from_raw_parts(ptr as *mut _, false)
         };
         Ok(profile)
     }
@@ -34,10 +34,8 @@ impl StreamProfileList {
     pub fn len(&mut self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let len = realsense_sys::rs2_get_stream_profiles_count(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let len =
+                sys::rs2_get_stream_profiles_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(len as usize)
         }
@@ -51,24 +49,26 @@ impl StreamProfileList {
     /// Turns into iterable [StreamProfileListIntoIter] instance.
     pub fn try_into_iter(mut self) -> Result<StreamProfileListIntoIter> {
         let len = self.len()?;
-        let ptr = unsafe { self.take() };
+        let ptr = self.into_raw();
         let iter = StreamProfileListIntoIter {
             len,
             index: 0,
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             fused: len == 0,
         };
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_stream_profile_list> {
+    pub fn into_raw(self) -> *mut sys::rs2_stream_profile_list {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_stream_profile_list>) -> Self {
-        Self { ptr }
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_stream_profile_list) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 }
 
@@ -84,7 +84,7 @@ impl IntoIterator for StreamProfileList {
 impl Drop for StreamProfileList {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_stream_profiles_list(self.ptr.as_ptr());
+            sys::rs2_delete_stream_profiles_list(self.ptr.as_ptr());
         }
     }
 }
@@ -93,7 +93,7 @@ impl Drop for StreamProfileList {
 pub struct StreamProfileListIntoIter {
     len: usize,
     index: usize,
-    ptr: NonNull<realsense_sys::rs2_stream_profile_list>,
+    ptr: NonNull<sys::rs2_stream_profile_list>,
     fused: bool,
 }
 
@@ -107,7 +107,7 @@ impl Iterator for StreamProfileListIntoIter {
 
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_stream_profile(
+            let ptr = sys::rs2_get_stream_profile(
                 self.ptr.as_ptr(),
                 self.index as c_int,
                 checker.inner_mut_ptr(),
@@ -127,8 +127,7 @@ impl Iterator for StreamProfileListIntoIter {
             self.fused = true;
         }
 
-        let profile =
-            unsafe { AnyStreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false) };
+        let profile = unsafe { AnyStreamProfile::from_raw_parts(ptr as *mut _, false) };
         Some(Ok(profile))
     }
 }
@@ -140,7 +139,7 @@ unsafe impl Send for StreamProfileList {}
 impl Drop for StreamProfileListIntoIter {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_stream_profiles_list(self.ptr.as_ptr());
+            sys::rs2_delete_stream_profiles_list(self.ptr.as_ptr());
         }
     }
 }

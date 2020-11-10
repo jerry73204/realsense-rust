@@ -32,7 +32,7 @@ pub struct Sensor<Kind>
 where
     Kind: sensor_kind::SensorKind,
 {
-    pub(crate) ptr: NonNull<realsense_sys::rs2_sensor>,
+    pub(crate) ptr: NonNull<sys::rs2_sensor>,
     _phantom: PhantomData<Kind>,
 }
 
@@ -57,12 +57,10 @@ where
     pub fn device(&self) -> Result<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_device_from_sensor(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_create_device_from_sensor(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            Device::from_ptr(NonNull::new(ptr).unwrap())
+            Device::from_raw(ptr)
         };
         Ok(device)
     }
@@ -73,9 +71,9 @@ where
     pub fn get_option(&self, option: Rs2Option) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_option(
-                self.ptr.as_ptr().cast::<realsense_sys::rs2_options>(),
-                option as realsense_sys::rs2_option,
+            let val = sys::rs2_get_option(
+                self.ptr.as_ptr().cast::<sys::rs2_options>(),
+                option as sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -86,9 +84,9 @@ where
     // pub fn set_option(&mut self, option: Rs2Option, value: f32) -> Result<()> {
     //     unsafe {
     //         let mut checker = ErrorChecker::new();
-    //         let val = realsense_sys::rs2_set_option(
-    //             self.ptr.as_ptr().cast::<realsense_sys::rs2_options>(),
-    //             option as realsense_sys::rs2_option,
+    //         let val = sys::rs2_set_option(
+    //             self.ptr.as_ptr().cast::<sys::rs2_options>(),
+    //             option as sys::rs2_option,
     //             value,
     //             checker.inner_mut_ptr(),
     //         );
@@ -101,10 +99,9 @@ where
     pub fn stream_profiles(&self) -> Result<StreamProfileList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr =
-                realsense_sys::rs2_get_stream_profiles(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let ptr = sys::rs2_get_stream_profiles(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            StreamProfileList::from_ptr(NonNull::new(ptr).unwrap())
+            StreamProfileList::from_raw(ptr)
         };
         Ok(list)
     }
@@ -113,12 +110,12 @@ where
     pub fn recommended_processing_blocks(&self) -> Result<ProcessingBlockList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_recommended_processing_blocks(
+            let ptr = sys::rs2_get_recommended_processing_blocks(
                 self.ptr.as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ProcessingBlockList::from_ptr(NonNull::new(ptr).unwrap())
+            ProcessingBlockList::from_raw(ptr)
         };
         Ok(list)
     }
@@ -178,9 +175,9 @@ where
     pub fn info(&self, kind: CameraInfo) -> Result<&str> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_sensor_info(
+            let ptr = sys::rs2_get_sensor_info(
                 self.ptr.as_ptr(),
-                kind as realsense_sys::rs2_camera_info,
+                kind as sys::rs2_camera_info,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -194,9 +191,9 @@ where
     pub fn is_info_supported(&self, kind: CameraInfo) -> Result<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_supports_sensor_info(
+            let val = sys::rs2_supports_sensor_info(
                 self.ptr.as_ptr(),
-                kind as realsense_sys::rs2_camera_info,
+                kind as sys::rs2_camera_info,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -205,15 +202,15 @@ where
         Ok(val != 0)
     }
 
-    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_sensor> {
+    pub fn into_raw(self) -> *mut sys::rs2_sensor {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_sensor>) -> Self {
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_sensor) -> Self {
         Self {
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             _phantom: PhantomData,
         }
     }
@@ -226,9 +223,9 @@ impl AnySensor {
     {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_sensor_extendable_to(
+            let val = sys::rs2_is_sensor_extendable_to(
                 self.ptr.as_ptr(),
-                Kind::EXTENSION as realsense_sys::rs2_extension,
+                Kind::EXTENSION as sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -237,14 +234,14 @@ impl AnySensor {
     }
 
     /// Extends to a specific sensor subtype.
-    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<Sensor<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<result::Result<Sensor<Kind>, Self>>
     where
         Kind: sensor_kind::NonAnySensorKind,
     {
         if self.is_extendable_to::<Kind>()? {
-            let ptr = unsafe { self.take() };
+            let ptr = self.into_raw();
             let sensor = Sensor {
-                ptr,
+                ptr: NonNull::new(ptr).unwrap(),
                 _phantom: PhantomData,
             };
             Ok(Ok(sensor))
@@ -317,8 +314,8 @@ impl<Kind> ToOptions for Sensor<Kind>
 where
     Kind: sensor_kind::SensorKind,
 {
-    fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
-        self.ptr.cast::<realsense_sys::rs2_options>()
+    fn get_options_ptr(&self) -> NonNull<sys::rs2_options> {
+        self.ptr.cast::<sys::rs2_options>()
     }
 }
 
@@ -330,7 +327,7 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_sensor(self.ptr.as_ptr());
+            sys::rs2_delete_sensor(self.ptr.as_ptr());
         }
     }
 }

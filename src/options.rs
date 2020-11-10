@@ -10,18 +10,15 @@ pub trait ToOptions {
         unsafe {
             let list_ptr = {
                 let mut checker = ErrorChecker::new();
-                let list_ptr = realsense_sys::rs2_get_options_list(
-                    options_ptr.as_ptr(),
-                    checker.inner_mut_ptr(),
-                );
+                let list_ptr =
+                    sys::rs2_get_options_list(options_ptr.as_ptr(), checker.inner_mut_ptr());
                 checker.check()?;
                 list_ptr
             };
 
             let len = {
                 let mut checker = ErrorChecker::new();
-                let len =
-                    realsense_sys::rs2_get_options_list_size(list_ptr, checker.inner_mut_ptr());
+                let len = sys::rs2_get_options_list_size(list_ptr, checker.inner_mut_ptr());
                 checker.check()?;
                 len
             };
@@ -29,11 +26,8 @@ pub trait ToOptions {
             let handles = (0..len)
                 .map(|index| {
                     let mut checker = ErrorChecker::new();
-                    let val = realsense_sys::rs2_get_option_from_list(
-                        list_ptr,
-                        index,
-                        checker.inner_mut_ptr(),
-                    );
+                    let val =
+                        sys::rs2_get_option_from_list(list_ptr, index, checker.inner_mut_ptr());
                     checker.check()?;
                     let option = Rs2Option::from_u32(val).unwrap();
                     let handle = OptionHandle {
@@ -48,12 +42,12 @@ pub trait ToOptions {
         }
     }
 
-    fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options>;
+    fn get_options_ptr(&self) -> NonNull<sys::rs2_options>;
 }
 
 #[derive(Debug, Clone)]
 pub struct OptionHandle {
-    ptr: NonNull<realsense_sys::rs2_options>,
+    ptr: NonNull<sys::rs2_options>,
     option: Rs2Option,
 }
 
@@ -61,9 +55,9 @@ impl OptionHandle {
     pub fn get_value(&self) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_option(
+            let val = sys::rs2_get_option(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -74,9 +68,9 @@ impl OptionHandle {
     pub fn set_value(&self, value: f32) -> Result<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_set_option(
+            sys::rs2_set_option(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 value,
                 checker.inner_mut_ptr(),
             );
@@ -88,9 +82,9 @@ impl OptionHandle {
     pub fn is_read_only(&self) -> Result<bool> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_option_read_only(
+            let val = sys::rs2_is_option_read_only(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -101,9 +95,9 @@ impl OptionHandle {
     pub fn name<'a>(&'a self) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_option_name(
+            let ptr = sys::rs2_get_option_name(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -115,9 +109,9 @@ impl OptionHandle {
     pub fn option_description<'a>(&'a self) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_option_description(
+            let ptr = sys::rs2_get_option_description(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -129,9 +123,9 @@ impl OptionHandle {
     pub fn value_description<'a>(&'a self, value: f32) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_option_value_description(
+            let ptr = sys::rs2_get_option_value_description(
                 self.ptr.as_ptr(),
-                self.option as realsense_sys::rs2_option,
+                self.option as sys::rs2_option,
                 value,
                 checker.inner_mut_ptr(),
             );

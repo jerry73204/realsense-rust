@@ -9,7 +9,7 @@ use crate::{
 /// An iterable list of sensors.
 #[derive(Debug)]
 pub struct SensorList {
-    ptr: NonNull<realsense_sys::rs2_sensor_list>,
+    ptr: NonNull<sys::rs2_sensor_list>,
 }
 
 impl SensorList {
@@ -19,13 +19,10 @@ impl SensorList {
     pub fn get(&mut self, index: usize) -> Result<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_sensor(
-                self.ptr.as_ptr(),
-                index as c_int,
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_create_sensor(self.ptr.as_ptr(), index as c_int, checker.inner_mut_ptr());
             checker.check()?;
-            Sensor::from_ptr(NonNull::new(ptr as *mut _).unwrap())
+            Sensor::from_raw(ptr as *mut _)
         };
         Ok(sensor)
     }
@@ -34,8 +31,7 @@ impl SensorList {
     pub fn len(&mut self) -> Result<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
-            let len =
-                realsense_sys::rs2_get_sensors_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let len = sys::rs2_get_sensors_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             len
         };
@@ -50,24 +46,26 @@ impl SensorList {
     /// Turns into [SensorListIntoIter] iterable type.
     pub fn try_into_iter(mut self) -> Result<SensorListIntoIter> {
         let len = self.len()?;
-        let ptr = unsafe { self.take() };
+        let ptr = self.into_raw();
         let iter = SensorListIntoIter {
             len,
             index: 0,
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             fused: len == 0,
         };
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_sensor_list> {
+    pub fn into_raw(self) -> *mut sys::rs2_sensor_list {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_sensor_list>) -> Self {
-        Self { ptr }
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_sensor_list) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 }
 
@@ -89,7 +87,7 @@ impl IntoIterator for SensorList {
 pub struct SensorListIntoIter {
     len: usize,
     index: usize,
-    ptr: NonNull<realsense_sys::rs2_sensor_list>,
+    ptr: NonNull<sys::rs2_sensor_list>,
     fused: bool,
 }
 
@@ -103,7 +101,7 @@ impl Iterator for SensorListIntoIter {
 
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_sensor(
+            let ptr = sys::rs2_create_sensor(
                 self.ptr.as_ptr(),
                 self.index as c_int,
                 checker.inner_mut_ptr(),
@@ -122,7 +120,7 @@ impl Iterator for SensorListIntoIter {
             self.fused = true;
         }
 
-        let sensor = unsafe { Sensor::from_ptr(NonNull::new(ptr).unwrap()) };
+        let sensor = unsafe { Sensor::from_raw(ptr) };
         Some(Ok(sensor))
     }
 }
@@ -134,7 +132,7 @@ unsafe impl Send for SensorList {}
 impl Drop for SensorList {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_sensor_list(self.ptr.as_ptr());
+            sys::rs2_delete_sensor_list(self.ptr.as_ptr());
         }
     }
 }

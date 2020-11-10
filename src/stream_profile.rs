@@ -23,7 +23,7 @@ pub struct StreamProfile<Kind>
 where
     Kind: stream_profile_kind::StreamProfileKind,
 {
-    ptr: NonNull<realsense_sys::rs2_stream_profile>,
+    ptr: NonNull<sys::rs2_stream_profile>,
     from_clone: bool,
     _phantom: PhantomData<Kind>,
 }
@@ -43,10 +43,8 @@ where
     pub fn is_default(&self) -> Result<bool> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_is_stream_profile_default(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let val =
+                sys::rs2_is_stream_profile_default(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             Ok(val != 0)
         }
@@ -62,7 +60,7 @@ where
             let mut unique_id = MaybeUninit::uninit();
             let mut framerate = MaybeUninit::uninit();
 
-            realsense_sys::rs2_get_stream_profile_data(
+            sys::rs2_get_stream_profile_data(
                 self.ptr.as_ptr(),
                 stream.as_mut_ptr(),
                 format.as_mut_ptr(),
@@ -96,9 +94,9 @@ where
         K: stream_profile_kind::StreamProfileKind,
     {
         unsafe {
-            let mut extrinsics = MaybeUninit::<realsense_sys::rs2_extrinsics>::uninit();
+            let mut extrinsics = MaybeUninit::<sys::rs2_extrinsics>::uninit();
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_get_extrinsics(
+            sys::rs2_get_extrinsics(
                 self.ptr.as_ptr(),
                 to_stream.borrow().ptr.as_ptr(),
                 extrinsics.as_mut_ptr(),
@@ -117,7 +115,7 @@ where
     {
         unsafe {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_register_extrinsics(
+            sys::rs2_register_extrinsics(
                 self.ptr.as_ptr(),
                 to_stream.borrow().ptr.as_ptr(),
                 *extrinsics,
@@ -128,19 +126,16 @@ where
         }
     }
 
-    pub(crate) unsafe fn take(self) -> (NonNull<realsense_sys::rs2_stream_profile>, bool) {
+    pub fn into_raw_parts(self) -> (*mut sys::rs2_stream_profile, bool) {
         let ptr = self.ptr;
         let from_clone = self.from_clone;
-        std::mem::forget(self);
-        (ptr, from_clone)
+        mem::forget(self);
+        (ptr.as_ptr(), from_clone)
     }
 
-    pub(crate) unsafe fn from_parts(
-        ptr: NonNull<realsense_sys::rs2_stream_profile>,
-        from_clone: bool,
-    ) -> Self {
+    pub unsafe fn from_raw_parts(ptr: *mut sys::rs2_stream_profile, from_clone: bool) -> Self {
         Self {
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             from_clone,
             _phantom: PhantomData,
         }
@@ -155,9 +150,9 @@ impl AnyStreamProfile {
     {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_stream_profile_is(
+            let val = sys::rs2_stream_profile_is(
                 self.ptr.as_ptr(),
-                Kind::EXTENSION as realsense_sys::rs2_extension,
+                Kind::EXTENSION as sys::rs2_extension,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
@@ -166,14 +161,14 @@ impl AnyStreamProfile {
     }
 
     /// Extends to a specific stream profile subtype.
-    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<StreamProfile<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<result::Result<StreamProfile<Kind>, Self>>
     where
         Kind: stream_profile_kind::NonAnyStreamProfileKind,
     {
         if self.is_extendable_to::<Kind>()? {
-            let (ptr, from_clone) = unsafe { self.take() };
+            let (ptr, from_clone) = self.into_raw_parts();
             let profile = StreamProfile {
-                ptr,
+                ptr: NonNull::new(ptr).unwrap(),
                 from_clone,
                 _phantom: PhantomData,
             };
@@ -213,7 +208,7 @@ impl VideoStreamProfile {
         let mut height = MaybeUninit::uninit();
         let resolution = unsafe {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_get_video_stream_resolution(
+            sys::rs2_get_video_stream_resolution(
                 self.ptr.as_ptr(),
                 width.as_mut_ptr(),
                 height.as_mut_ptr(),
@@ -233,8 +228,8 @@ impl VideoStreamProfile {
     pub fn intrinsics(&self) -> Result<Intrinsics> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let mut intrinsics = MaybeUninit::<realsense_sys::rs2_intrinsics>::uninit();
-            realsense_sys::rs2_get_video_stream_intrinsics(
+            let mut intrinsics = MaybeUninit::<sys::rs2_intrinsics>::uninit();
+            sys::rs2_get_video_stream_intrinsics(
                 self.ptr.as_ptr(),
                 intrinsics.as_mut_ptr(),
                 checker.inner_mut_ptr(),
@@ -250,9 +245,8 @@ impl MotionStreamProfile {
     pub fn motion_intrinsics(&self) -> Result<MotionIntrinsics> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let mut intrinsics =
-                MaybeUninit::<realsense_sys::rs2_motion_device_intrinsic>::uninit();
-            realsense_sys::rs2_get_motion_intrinsics(
+            let mut intrinsics = MaybeUninit::<sys::rs2_motion_device_intrinsic>::uninit();
+            sys::rs2_get_motion_intrinsics(
                 self.ptr.as_ptr(),
                 intrinsics.as_mut_ptr(),
                 checker.inner_mut_ptr(),
@@ -270,7 +264,7 @@ where
     fn drop(&mut self) {
         unsafe {
             if self.from_clone {
-                realsense_sys::rs2_delete_stream_profile(self.ptr.as_ptr());
+                sys::rs2_delete_stream_profile(self.ptr.as_ptr());
             }
         }
     }

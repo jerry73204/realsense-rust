@@ -9,7 +9,7 @@ use crate::{
 /// The iterable list of [AnyProcessingBlock](AnyProcessingBlock)s.
 #[derive(Debug)]
 pub struct ProcessingBlockList {
-    ptr: NonNull<realsense_sys::rs2_processing_block_list>,
+    ptr: NonNull<sys::rs2_processing_block_list>,
 }
 
 impl ProcessingBlockList {
@@ -17,13 +17,13 @@ impl ProcessingBlockList {
     pub fn get(&mut self, index: usize) -> Result<AnyProcessingBlock> {
         let block = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_get_processing_block(
+            let ptr = sys::rs2_get_processing_block(
                 self.ptr.as_ptr(),
                 index as c_int,
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            AnyProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap())?
+            AnyProcessingBlock::new_from_raw(NonNull::new(ptr).unwrap())?
         };
         Ok(block)
     }
@@ -32,7 +32,7 @@ impl ProcessingBlockList {
     pub fn len(&mut self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let val = realsense_sys::rs2_get_recommended_processing_blocks_count(
+            let val = sys::rs2_get_recommended_processing_blocks_count(
                 self.ptr.as_ptr(),
                 checker.inner_mut_ptr(),
             );
@@ -49,19 +49,25 @@ impl ProcessingBlockList {
     /// Converts to iterator type.
     pub fn try_into_iter(mut self) -> Result<ProcessingBlockListIntoIter> {
         let len = self.len()?;
-        let ptr = unsafe { self.take() };
-        let iter = ProcessingBlockListIntoIter { len, index: 0, ptr };
+        let ptr = self.into_raw();
+        let iter = ProcessingBlockListIntoIter {
+            len,
+            index: 0,
+            ptr: NonNull::new(ptr).unwrap(),
+        };
         Ok(iter)
     }
 
-    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_processing_block_list> {
+    pub fn into_raw(self) -> *mut sys::rs2_processing_block_list {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_processing_block_list>) -> Self {
-        Self { ptr }
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_processing_block_list) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 }
 
@@ -81,7 +87,7 @@ impl IntoIterator for ProcessingBlockList {
 impl Drop for ProcessingBlockList {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_recommended_processing_blocks(self.ptr.as_ptr());
+            sys::rs2_delete_recommended_processing_blocks(self.ptr.as_ptr());
         }
     }
 }
@@ -90,7 +96,7 @@ impl Drop for ProcessingBlockList {
 pub struct ProcessingBlockListIntoIter {
     len: usize,
     index: usize,
-    ptr: NonNull<realsense_sys::rs2_processing_block_list>,
+    ptr: NonNull<sys::rs2_processing_block_list>,
 }
 
 impl Iterator for ProcessingBlockListIntoIter {
@@ -100,13 +106,13 @@ impl Iterator for ProcessingBlockListIntoIter {
         if self.index < self.len {
             let result = unsafe {
                 let mut checker = ErrorChecker::new();
-                let ptr = realsense_sys::rs2_get_processing_block(
+                let ptr = sys::rs2_get_processing_block(
                     self.ptr.as_ptr(),
                     self.index as c_int,
                     checker.inner_mut_ptr(),
                 );
                 match checker.check() {
-                    Ok(()) => AnyProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap()),
+                    Ok(()) => AnyProcessingBlock::new_from_raw(NonNull::new(ptr).unwrap()),
                     Err(err) => return Some(Err(err)),
                 }
             };
@@ -123,7 +129,7 @@ impl FusedIterator for ProcessingBlockListIntoIter {}
 impl Drop for ProcessingBlockListIntoIter {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_recommended_processing_blocks(self.ptr.as_ptr());
+            sys::rs2_delete_recommended_processing_blocks(self.ptr.as_ptr());
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct PipelineProfile {
-    ptr: NonNull<realsense_sys::rs2_pipeline_profile>,
+    ptr: NonNull<sys::rs2_pipeline_profile>,
 }
 
 impl PipelineProfile {
@@ -17,15 +17,13 @@ impl PipelineProfile {
     pub fn device(&self) -> Result<Device> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_pipeline_profile_get_device(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_pipeline_profile_get_device(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             ptr
         };
 
-        let device = unsafe { Device::from_ptr(NonNull::new(ptr).unwrap()) };
+        let device = unsafe { Device::from_raw(ptr) };
         Ok(device)
     }
 
@@ -33,20 +31,26 @@ impl PipelineProfile {
     pub fn streams(&self) -> Result<StreamProfileList> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_pipeline_profile_get_streams(
-                self.ptr.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_pipeline_profile_get_streams(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             ptr
         };
 
-        let list = unsafe { StreamProfileList::from_ptr(NonNull::new(ptr).unwrap()) };
+        let list = unsafe { StreamProfileList::from_raw(ptr) };
         Ok(list)
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_pipeline_profile>) -> Self {
-        Self { ptr }
+    pub fn into_raw(self) -> *mut sys::rs2_pipeline_profile {
+        let ptr = self.ptr;
+        mem::forget(self);
+        ptr.as_ptr()
+    }
+
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_pipeline_profile) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 
     pub(crate) unsafe fn unsafe_clone(&self) -> Self {
@@ -57,7 +61,7 @@ impl PipelineProfile {
 impl Drop for PipelineProfile {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_pipeline_profile(self.ptr.as_ptr());
+            sys::rs2_delete_pipeline_profile(self.ptr.as_ptr());
         }
     }
 }

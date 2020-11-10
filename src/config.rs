@@ -9,7 +9,7 @@ use crate::{
 /// The pipeline configuration that will be consumed by [Pipeline::start()](crate::pipeline::Pipeline::start).
 #[derive(Debug)]
 pub struct Config {
-    pub(crate) ptr: NonNull<realsense_sys::rs2_config>,
+    pub(crate) ptr: NonNull<sys::rs2_config>,
 }
 
 impl Config {
@@ -17,7 +17,7 @@ impl Config {
     pub fn new() -> Result<Self> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_config(checker.inner_mut_ptr());
+            let ptr = sys::rs2_create_config(checker.inner_mut_ptr());
             checker.check()?;
             ptr
         };
@@ -39,13 +39,13 @@ impl Config {
     ) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_config_enable_stream(
+            let ptr = sys::rs2_config_enable_stream(
                 self.ptr.as_ptr(),
-                stream as realsense_sys::rs2_stream,
+                stream as sys::rs2_stream,
                 index as c_int,
                 width as c_int,
                 height as c_int,
-                format as realsense_sys::rs2_format,
+                format as sys::rs2_format,
                 framerate as c_int,
                 checker.inner_mut_ptr(),
             );
@@ -59,7 +59,7 @@ impl Config {
     pub fn enable_device_from_serial(self, serial: &CStr) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_config_enable_device(
+            let ptr = sys::rs2_config_enable_device(
                 self.ptr.as_ptr(),
                 serial.as_ptr(),
                 checker.inner_mut_ptr(),
@@ -74,7 +74,7 @@ impl Config {
     pub fn enable_device_from_file<P>(self, file: &CStr) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_config_enable_device_from_file(
+            let ptr = sys::rs2_config_enable_device_from_file(
                 self.ptr.as_ptr(),
                 file.as_ptr(),
                 checker.inner_mut_ptr(),
@@ -85,6 +85,18 @@ impl Config {
         Ok(self)
     }
 
+    pub fn into_raw(self) -> *mut sys::rs2_config {
+        let ptr = self.ptr;
+        mem::forget(self);
+        ptr.as_ptr()
+    }
+
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_config) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
+    }
+
     pub(crate) unsafe fn unsafe_clone(&self) -> Self {
         Self { ptr: self.ptr }
     }
@@ -93,7 +105,7 @@ impl Config {
 impl Drop for Config {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_config(self.ptr.as_ptr());
+            sys::rs2_delete_config(self.ptr.as_ptr());
         }
     }
 }

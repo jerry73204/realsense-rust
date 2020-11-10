@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     error::{Error as RsError, ErrorChecker, Result},
     frame::{CompositeFrame, Frame, GenericFrameEx},
-    pipeline_kind,
+    pipeline_kind::{self, PipelineState},
     pipeline_profile::PipelineProfile,
 };
 
@@ -17,7 +17,7 @@ pub struct Pipeline<State>
 where
     State: pipeline_kind::PipelineState,
 {
-    ptr: NonNull<realsense_sys::rs2_pipeline>,
+    ptr: NonNull<sys::rs2_pipeline>,
     context: Context,
     state: State,
 }
@@ -39,9 +39,8 @@ impl InactivePipeline {
     pub fn from_context(context: Context) -> Result<Self> {
         let ptr = {
             let mut checker = ErrorChecker::new();
-            let ptr = unsafe {
-                realsense_sys::rs2_create_pipeline(context.ptr.as_ptr(), checker.inner_mut_ptr())
-            };
+            let ptr =
+                unsafe { sys::rs2_create_pipeline(context.ptr.as_ptr(), checker.inner_mut_ptr()) };
             checker.check()?;
             ptr
         };
@@ -61,7 +60,7 @@ impl InactivePipeline {
         let ptr = match &config {
             Some(conf) => unsafe {
                 let mut checker = ErrorChecker::new();
-                let ptr = realsense_sys::rs2_pipeline_start_with_config(
+                let ptr = sys::rs2_pipeline_start_with_config(
                     self.ptr.as_ptr(),
                     conf.ptr.as_ptr(),
                     checker.inner_mut_ptr(),
@@ -71,19 +70,18 @@ impl InactivePipeline {
             },
             None => unsafe {
                 let mut checker = ErrorChecker::new();
-                let ptr =
-                    realsense_sys::rs2_pipeline_start(self.ptr.as_ptr(), checker.inner_mut_ptr());
+                let ptr = sys::rs2_pipeline_start(self.ptr.as_ptr(), checker.inner_mut_ptr());
                 checker.check()?;
                 ptr
             },
         };
 
-        let profile = unsafe { PipelineProfile::from_ptr(NonNull::new(ptr).unwrap()) };
-        let pipeline = unsafe {
-            let (ptr, context, _) = self.take();
+        let profile = unsafe { PipelineProfile::from_raw(ptr) };
+        let pipeline = {
+            let (pipeline_ptr, context_ptr) = self.into_raw_parts();
             Pipeline {
-                ptr,
-                context,
+                ptr: NonNull::new(pipeline_ptr).unwrap(),
+                context: unsafe { Context::from_raw(context_ptr) },
                 state: pipeline_kind::Active { profile, config },
             }
         };
@@ -100,12 +98,12 @@ impl InactivePipeline {
         let (tx, rx) = futures::channel::oneshot::channel();
 
         // start blocking thread
-        std::thread::spawn(move || {
+        thread::spawn(move || {
             let func = || unsafe {
                 let profile_ptr = match config_ptr_opt {
                     Some(config_ptr) => {
                         let mut checker = ErrorChecker::new();
-                        let ptr = realsense_sys::rs2_pipeline_start_with_config(
+                        let ptr = sys::rs2_pipeline_start_with_config(
                             pipeline_ptr.load(Ordering::SeqCst),
                             config_ptr.load(Ordering::SeqCst),
                             checker.inner_mut_ptr(),
@@ -115,7 +113,7 @@ impl InactivePipeline {
                     }
                     None => {
                         let mut checker = ErrorChecker::new();
-                        let ptr = realsense_sys::rs2_pipeline_start(
+                        let ptr = sys::rs2_pipeline_start(
                             pipeline_ptr.load(Ordering::SeqCst),
                             checker.inner_mut_ptr(),
                         );
@@ -130,19 +128,25 @@ impl InactivePipeline {
         });
 
         let profile_ptr = rx.await.unwrap()?;
-        let profile = unsafe {
-            PipelineProfile::from_ptr(NonNull::new(profile_ptr.load(Ordering::SeqCst)).unwrap())
-        };
-        let pipeline = unsafe {
-            let (ptr, context, _) = self.take();
+        let profile = unsafe { PipelineProfile::from_raw(profile_ptr.load(Ordering::SeqCst)) };
+        let pipeline = {
+            let (pipeline_ptr, context_ptr) = self.into_raw_parts();
             Pipeline {
-                ptr,
-                context,
+                ptr: NonNull::new(pipeline_ptr).unwrap(),
+                context: unsafe { Context::from_raw(context_ptr) },
                 state: pipeline_kind::Active { profile, config },
             }
         };
 
         Ok(pipeline)
+    }
+
+    pub fn into_raw_parts(self) -> (*mut sys::rs2_pipeline, *mut sys::rs2_context) {
+        // take fields without invoking drop()
+        let ptr = self.ptr;
+        let context = unsafe { self.context.unsafe_clone().into_raw() };
+        mem::forget(self);
+        (ptr.as_ptr(), context)
     }
 }
 
@@ -159,7 +163,7 @@ impl ActivePipeline {
         let frame = loop {
             let mut checker = ErrorChecker::new();
             let ptr = unsafe {
-                realsense_sys::rs2_pipeline_wait_for_frames(
+                sys::rs2_pipeline_wait_for_frames(
                     self.ptr.as_ptr(),
                     timeout_ms,
                     checker.inner_mut_ptr(),
@@ -174,7 +178,7 @@ impl ActivePipeline {
                 }
             }
 
-            let frame = unsafe { Frame::from_ptr(NonNull::new(ptr).unwrap()) };
+            let frame = unsafe { Frame::from_raw(ptr) };
             break frame;
         };
 
@@ -188,8 +192,8 @@ impl ActivePipeline {
     pub fn try_wait(&mut self) -> Result<Option<CompositeFrame>> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let mut ptr: *mut realsense_sys::rs2_frame = std::ptr::null_mut();
-            let ret = realsense_sys::rs2_pipeline_poll_for_frames(
+            let mut ptr: *mut sys::rs2_frame = ptr::null_mut();
+            let ret = sys::rs2_pipeline_poll_for_frames(
                 self.ptr.as_ptr(),
                 &mut ptr as *mut _,
                 checker.inner_mut_ptr(),
@@ -200,7 +204,7 @@ impl ActivePipeline {
             }
 
             if ret != 0 {
-                let frame = Frame::from_ptr(NonNull::new(ptr).unwrap());
+                let frame = Frame::from_raw(ptr);
                 Ok(Some(frame))
             } else {
                 Ok(None)
@@ -212,22 +216,22 @@ impl ActivePipeline {
     pub async fn wait_async(&mut self, timeout: Option<Duration>) -> Result<CompositeFrame> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
-            .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
+            .unwrap_or(sys::RS2_DEFAULT_TIMEOUT as c_uint);
         let (tx, rx) = futures::channel::oneshot::channel();
         let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
 
-        std::thread::spawn(move || {
+        thread::spawn(move || {
             let result = unsafe {
                 loop {
                     let mut checker = ErrorChecker::new();
-                    let ptr = realsense_sys::rs2_pipeline_wait_for_frames(
+                    let ptr = sys::rs2_pipeline_wait_for_frames(
                         pipeline_ptr.load(Ordering::Relaxed),
                         timeout_ms,
                         checker.inner_mut_ptr(),
                     );
                     let result = match (timeout, checker.check()) {
                         (None, Err(RsError::Timeout(..))) => continue,
-                        (_, result) => result.map(|_| Frame::from_ptr(NonNull::new(ptr).unwrap())),
+                        (_, result) => result.map(|_| Frame::from_raw(ptr)),
                     };
                     break result;
                 }
@@ -245,35 +249,39 @@ impl ActivePipeline {
     pub fn stop(self) -> Result<InactivePipeline> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            realsense_sys::rs2_pipeline_stop(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            sys::rs2_pipeline_stop(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
         }
 
-        let pipeline = unsafe {
-            let (ptr, context, _) = self.take();
+        let pipeline = {
+            let (pipeline_ptr, context_ptr, profile_ptr, config_ptr) = self.into_raw_parts();
+
+            mem::drop(unsafe { pipeline_kind::Active::from_raw_parts(profile_ptr, config_ptr) });
+
             Pipeline {
-                ptr,
-                context,
+                ptr: NonNull::new(pipeline_ptr).unwrap(),
+                context: unsafe { Context::from_raw(context_ptr) },
                 state: pipeline_kind::Inactive,
             }
         };
 
         Ok(pipeline)
     }
-}
 
-impl<State> Pipeline<State>
-where
-    State: pipeline_kind::PipelineState,
-{
-    unsafe fn take(self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
+    pub fn into_raw_parts(
+        self,
+    ) -> (
+        *mut sys::rs2_pipeline,
+        *mut sys::rs2_context,
+        *mut sys::rs2_pipeline_profile,
+        Option<*mut sys::rs2_config>,
+    ) {
         // take fields without invoking drop()
         let ptr = self.ptr;
-        let context = self.context.unsafe_clone();
-        let state = self.state.unsafe_clone();
-        std::mem::forget(self);
-
-        (ptr, context, state)
+        let context = unsafe { self.context.unsafe_clone().into_raw() };
+        let (pipeline_profile, config) = unsafe { self.state.unsafe_clone().into_raw_parts() };
+        mem::forget(self);
+        (ptr.as_ptr(), context, pipeline_profile, config)
     }
 }
 
@@ -283,7 +291,7 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_pipeline(self.ptr.as_ptr());
+            sys::rs2_delete_pipeline(self.ptr.as_ptr());
         }
     }
 }

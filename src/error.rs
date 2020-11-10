@@ -5,18 +5,18 @@ use crate::common::*;
 #[derive(Debug)]
 pub(crate) struct ErrorChecker {
     checked: bool,
-    ptr: *mut realsense_sys::rs2_error,
+    ptr: *mut sys::rs2_error,
 }
 
 impl ErrorChecker {
     pub fn new() -> ErrorChecker {
         ErrorChecker {
             checked: false,
-            ptr: std::ptr::null_mut(),
+            ptr: ptr::null_mut(),
         }
     }
 
-    pub fn inner_mut_ptr(&mut self) -> *mut *mut realsense_sys::rs2_error {
+    pub fn inner_mut_ptr(&mut self) -> *mut *mut sys::rs2_error {
         &mut self.ptr as *mut _
     }
 
@@ -49,17 +49,23 @@ impl Drop for ErrorChecker {
 
 /// The error type wraps around underlying error thrown by librealsense library.
 pub enum Error {
-    Timeout(NonNull<realsense_sys::rs2_error>),
-    UnsupportedOption(NonNull<realsense_sys::rs2_error>),
-    Other(NonNull<realsense_sys::rs2_error>),
+    Timeout(NonNull<sys::rs2_error>),
+    UnsupportedOption(NonNull<sys::rs2_error>),
+    Other(NonNull<sys::rs2_error>),
 }
 
 impl Error {
     pub fn error_message(&self) -> &str {
-        get_error_message(self.get_ptr())
+        get_error_message(self.ptr())
     }
 
-    pub(crate) fn get_ptr(&self) -> NonNull<realsense_sys::rs2_error> {
+    pub fn into_raw(self) -> *mut sys::rs2_error {
+        let ptr = self.ptr().as_ptr();
+        mem::forget(self);
+        ptr
+    }
+
+    pub(crate) fn ptr(&self) -> NonNull<sys::rs2_error> {
         match *self {
             Error::Timeout(ptr) => ptr,
             Error::UnsupportedOption(ptr) => ptr,
@@ -90,19 +96,19 @@ unsafe impl Sync for Error {}
 
 impl Drop for Error {
     fn drop(&mut self) {
-        let ptr = self.get_ptr();
+        let ptr = self.ptr();
         unsafe {
-            realsense_sys::rs2_free_error(ptr.as_ptr());
+            sys::rs2_free_error(ptr.as_ptr());
         }
     }
 }
 
 /// A convenient alias Result type.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
-fn get_error_message<'a>(ptr: NonNull<realsense_sys::rs2_error>) -> &'a str {
+fn get_error_message<'a>(ptr: NonNull<sys::rs2_error>) -> &'a str {
     unsafe {
-        let ptr = realsense_sys::rs2_get_error_message(ptr.as_ptr());
+        let ptr = sys::rs2_get_error_message(ptr.as_ptr());
         CStr::from_ptr(ptr).to_str().unwrap()
     }
 }

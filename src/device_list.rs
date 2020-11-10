@@ -9,7 +9,7 @@ use crate::{
 /// An iterable list of devices.
 #[derive(Debug)]
 pub struct DeviceList {
-    ptr: NonNull<realsense_sys::rs2_device_list>,
+    ptr: NonNull<sys::rs2_device_list>,
 }
 
 impl DeviceList {
@@ -19,13 +19,10 @@ impl DeviceList {
     pub fn get(&self, index: usize) -> Result<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_device(
-                self.ptr.as_ptr(),
-                index as c_int,
-                checker.inner_mut_ptr(),
-            );
+            let ptr =
+                sys::rs2_create_device(self.ptr.as_ptr(), index as c_int, checker.inner_mut_ptr());
             checker.check()?;
-            Device::from_ptr(NonNull::new(ptr).unwrap())
+            Device::from_raw(ptr)
         };
         Ok(device)
     }
@@ -34,8 +31,7 @@ impl DeviceList {
     pub fn len(&self) -> Result<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
-            let len =
-                realsense_sys::rs2_get_device_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            let len = sys::rs2_get_device_count(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             len
         };
@@ -45,11 +41,11 @@ impl DeviceList {
     /// Turns into [DeviceListIntoIter] instance that implements [IntoIterator] trait.
     pub fn try_into_iter(self) -> Result<DeviceListIntoIter> {
         let len = self.len()?;
-        let ptr = unsafe { self.take() };
+        let ptr = self.into_raw();
         let iter = DeviceListIntoIter {
             index: 0,
             len,
-            ptr,
+            ptr: NonNull::new(ptr).unwrap(),
             fused: len == 0,
         };
         Ok(iter)
@@ -60,14 +56,16 @@ impl DeviceList {
         Ok(self.len()? == 0)
     }
 
-    pub(crate) unsafe fn take(self) -> NonNull<realsense_sys::rs2_device_list> {
+    pub fn into_raw(self) -> *mut sys::rs2_device_list {
         let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr
+        mem::forget(self);
+        ptr.as_ptr()
     }
 
-    pub(crate) unsafe fn from_ptr(ptr: NonNull<realsense_sys::rs2_device_list>) -> Self {
-        Self { ptr }
+    pub unsafe fn from_raw(ptr: *mut sys::rs2_device_list) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+        }
     }
 }
 
@@ -83,7 +81,7 @@ impl IntoIterator for DeviceList {
 impl Drop for DeviceList {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_device_list(self.ptr.as_ptr());
+            sys::rs2_delete_device_list(self.ptr.as_ptr());
         }
     }
 }
@@ -92,7 +90,7 @@ impl Drop for DeviceList {
 pub struct DeviceListIntoIter {
     index: usize,
     len: usize,
-    ptr: NonNull<realsense_sys::rs2_device_list>,
+    ptr: NonNull<sys::rs2_device_list>,
     fused: bool,
 }
 
@@ -106,7 +104,7 @@ impl Iterator for DeviceListIntoIter {
 
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = realsense_sys::rs2_create_device(
+            let ptr = sys::rs2_create_device(
                 self.ptr.as_ptr(),
                 self.index as c_int,
                 checker.inner_mut_ptr(),
@@ -139,7 +137,7 @@ unsafe impl Send for DeviceList {}
 impl Drop for DeviceListIntoIter {
     fn drop(&mut self) {
         unsafe {
-            realsense_sys::rs2_delete_device_list(self.ptr.as_ptr());
+            sys::rs2_delete_device_list(self.ptr.as_ptr());
         }
     }
 }
