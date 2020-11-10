@@ -7,16 +7,21 @@ pub mod device_hub;
 pub mod device_list;
 pub mod error;
 pub mod frame;
+pub mod frame_kind;
 pub mod frame_queue;
 pub mod kind;
 pub mod options;
 pub mod pipeline;
+pub mod pipeline_kind;
 pub mod pipeline_profile;
 pub mod processing_block;
+pub mod processing_block_kind;
 pub mod processing_block_list;
 pub mod sensor;
+pub mod sensor_kind;
 pub mod sensor_list;
 pub mod stream_profile;
+pub mod stream_profile_kind;
 pub mod stream_profile_list;
 
 /// The mod collects common used traits from this crate.

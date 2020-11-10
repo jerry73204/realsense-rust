@@ -4,7 +4,8 @@ use crate::{
     base::DEFAULT_TIMEOUT,
     common::*,
     error::{Error as RsError, ErrorChecker, Result as RsResult},
-    frame::{marker as frame_marker, AnyFrame, Frame, GenericFrameEx},
+    frame::{AnyFrame, Frame, GenericFrameEx},
+    frame_kind::FrameKind,
 };
 
 /// The queue of frames.
@@ -29,7 +30,7 @@ impl FrameQueue {
     /// Push a frame to the queue.
     pub fn enqueue<Kind>(&mut self, frame: Frame<Kind>)
     where
-        Kind: frame_marker::FrameKind,
+        Kind: FrameKind,
     {
         unsafe {
             realsense_sys::rs2_enqueue_frame(

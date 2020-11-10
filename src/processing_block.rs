@@ -4,111 +4,13 @@ use crate::{
     base::StreamProfileData,
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    frame::{
-        marker as frame_marker, AnyFrame, DepthFrame, ExtendedFrame, Frame, GenericFrameEx,
-        PointsFrame, VideoFrame,
-    },
+    frame::{AnyFrame, DepthFrame, ExtendedFrame, Frame, GenericFrameEx, PointsFrame, VideoFrame},
+    frame_kind::FrameKind,
     frame_queue::FrameQueue,
-    kind::{ColorScheme, Extension, HoleFillingMode, PersistenceControl, Rs2Option, StreamKind},
+    kind::{ColorScheme, HoleFillingMode, PersistenceControl, Rs2Option, StreamKind},
     options::ToOptions,
+    processing_block_kind,
 };
-
-pub mod marker {
-    use super::*;
-
-    pub trait ProcessingBlockKind {}
-    pub trait ExtendableProcessingBlockKind
-    where
-        Self: ProcessingBlockKind,
-    {
-        const EXTENSION: Extension;
-    }
-
-    #[derive(Debug)]
-    pub struct Any;
-    impl ProcessingBlockKind for Any {}
-
-    #[derive(Debug)]
-    pub struct DecimationFilterKind;
-    impl ProcessingBlockKind for DecimationFilterKind {}
-    impl ExtendableProcessingBlockKind for DecimationFilterKind {
-        const EXTENSION: Extension = Extension::DecimationFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct ThresholdFilterKind;
-    impl ProcessingBlockKind for ThresholdFilterKind {}
-    impl ExtendableProcessingBlockKind for ThresholdFilterKind {
-        const EXTENSION: Extension = Extension::ThresholdFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct DisparityFilterKind;
-    impl ProcessingBlockKind for DisparityFilterKind {}
-    impl ExtendableProcessingBlockKind for DisparityFilterKind {
-        const EXTENSION: Extension = Extension::DisparityFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct SpatialFilterKind;
-    impl ProcessingBlockKind for SpatialFilterKind {}
-    impl ExtendableProcessingBlockKind for SpatialFilterKind {
-        const EXTENSION: Extension = Extension::SpatialFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct TemporalFilterKind;
-    impl ProcessingBlockKind for TemporalFilterKind {}
-    impl ExtendableProcessingBlockKind for TemporalFilterKind {
-        const EXTENSION: Extension = Extension::TemporalFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct HoleFillingFilterKind;
-    impl ProcessingBlockKind for HoleFillingFilterKind {}
-    impl ExtendableProcessingBlockKind for HoleFillingFilterKind {
-        const EXTENSION: Extension = Extension::HoleFillingFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct ZeroOrderFilterKind;
-    impl ProcessingBlockKind for ZeroOrderFilterKind {}
-    impl ExtendableProcessingBlockKind for ZeroOrderFilterKind {
-        const EXTENSION: Extension = Extension::ZeroOrderFilter;
-    }
-
-    #[derive(Debug)]
-    pub struct PointCloudKind;
-    impl ProcessingBlockKind for PointCloudKind {}
-
-    #[derive(Debug)]
-    pub struct YuyDecoderKind;
-    impl ProcessingBlockKind for YuyDecoderKind {}
-
-    #[derive(Debug)]
-    pub struct UnitsTransformKind;
-    impl ProcessingBlockKind for UnitsTransformKind {}
-
-    #[derive(Debug)]
-    pub struct SyncerKind;
-    impl ProcessingBlockKind for SyncerKind {}
-
-    #[derive(Debug)]
-    pub struct AlignKind;
-    impl ProcessingBlockKind for AlignKind {}
-
-    #[derive(Debug)]
-    pub struct ColorizerKind;
-    impl ProcessingBlockKind for ColorizerKind {}
-
-    #[derive(Debug)]
-    pub struct HuffmanDepthDecompressKind;
-    impl ProcessingBlockKind for HuffmanDepthDecompressKind {}
-
-    #[derive(Debug)]
-    pub struct RatesPrinterKind;
-    impl ProcessingBlockKind for RatesPrinterKind {}
-}
 
 /// The type returned by [ProcessingBlock::<Any>::try_extend](ProcessingBlock::try_extend).
 ///
@@ -130,7 +32,7 @@ pub enum ExtendedProcessingBlock {
 #[derive(Debug)]
 pub struct ProcessingBlock<Kind>
 where
-    Kind: marker::ProcessingBlockKind,
+    Kind: processing_block_kind::ProcessingBlockKind,
 {
     pub(crate) ptr: NonNull<realsense_sys::rs2_processing_block>,
     queue: FrameQueue,
@@ -139,30 +41,31 @@ where
 
 // type aliases
 
-pub type DecimationFilter = ProcessingBlock<marker::DecimationFilterKind>;
-pub type ThresholdFilter = ProcessingBlock<marker::ThresholdFilterKind>;
-pub type DisparityFilter = ProcessingBlock<marker::DisparityFilterKind>;
-pub type SpatialFilter = ProcessingBlock<marker::SpatialFilterKind>;
-pub type TemporalFilter = ProcessingBlock<marker::TemporalFilterKind>;
-pub type HoleFillingFilter = ProcessingBlock<marker::HoleFillingFilterKind>;
-pub type ZeroOrderFilter = ProcessingBlock<marker::ZeroOrderFilterKind>;
-pub type PointCloud = ProcessingBlock<marker::PointCloudKind>;
-pub type YuyDecoder = ProcessingBlock<marker::YuyDecoderKind>;
-pub type UnitsTransform = ProcessingBlock<marker::UnitsTransformKind>;
-pub type Syncer = ProcessingBlock<marker::SyncerKind>;
-pub type Align = ProcessingBlock<marker::AlignKind>;
-pub type Colorizer = ProcessingBlock<marker::ColorizerKind>;
-pub type HuffmanDepthDecompress = ProcessingBlock<marker::HuffmanDepthDecompressKind>;
-pub type RatesPrinter = ProcessingBlock<marker::RatesPrinterKind>;
-pub type AnyProcessingBlock = ProcessingBlock<marker::Any>;
+pub type DecimationFilter = ProcessingBlock<processing_block_kind::DecimationFilterKind>;
+pub type ThresholdFilter = ProcessingBlock<processing_block_kind::ThresholdFilterKind>;
+pub type DisparityFilter = ProcessingBlock<processing_block_kind::DisparityFilterKind>;
+pub type SpatialFilter = ProcessingBlock<processing_block_kind::SpatialFilterKind>;
+pub type TemporalFilter = ProcessingBlock<processing_block_kind::TemporalFilterKind>;
+pub type HoleFillingFilter = ProcessingBlock<processing_block_kind::HoleFillingFilterKind>;
+pub type ZeroOrderFilter = ProcessingBlock<processing_block_kind::ZeroOrderFilterKind>;
+pub type PointCloud = ProcessingBlock<processing_block_kind::PointCloudKind>;
+pub type YuyDecoder = ProcessingBlock<processing_block_kind::YuyDecoderKind>;
+pub type UnitsTransform = ProcessingBlock<processing_block_kind::UnitsTransformKind>;
+pub type Syncer = ProcessingBlock<processing_block_kind::SyncerKind>;
+pub type Align = ProcessingBlock<processing_block_kind::AlignKind>;
+pub type Colorizer = ProcessingBlock<processing_block_kind::ColorizerKind>;
+pub type HuffmanDepthDecompress =
+    ProcessingBlock<processing_block_kind::HuffmanDepthDecompressKind>;
+pub type RatesPrinter = ProcessingBlock<processing_block_kind::RatesPrinterKind>;
+pub type AnyProcessingBlock = ProcessingBlock<processing_block_kind::Any>;
 
 impl<Kind> ProcessingBlock<Kind>
 where
-    Kind: marker::ProcessingBlockKind,
+    Kind: processing_block_kind::ProcessingBlockKind,
 {
     pub fn process<K>(&mut self, input: Frame<K>) -> RsResult<AnyFrame>
     where
-        K: frame_marker::FrameKind,
+        K: FrameKind,
     {
         unsafe {
             let frame_ptr = input.take();
@@ -180,7 +83,7 @@ where
 
     pub async fn process_async<K>(&mut self, input: Frame<K>) -> RsResult<AnyFrame>
     where
-        K: frame_marker::FrameKind,
+        K: FrameKind,
     {
         unsafe {
             let frame_ptr = input.take();
@@ -249,7 +152,7 @@ where
 impl AnyProcessingBlock {
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
-        Kind: marker::ExtendableProcessingBlockKind,
+        Kind: processing_block_kind::ExtendableProcessingBlockKind,
     {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -265,7 +168,7 @@ impl AnyProcessingBlock {
 
     pub fn try_extend_to<Kind>(self) -> RsResult<Result<ProcessingBlock<Kind>, Self>>
     where
-        Kind: marker::ExtendableProcessingBlockKind,
+        Kind: processing_block_kind::ExtendableProcessingBlockKind,
     {
         unsafe {
             let is_extendable = self.is_extendable_to::<Kind>()?;
@@ -282,40 +185,47 @@ impl AnyProcessingBlock {
     pub fn try_extend(self) -> RsResult<ExtendedProcessingBlock> {
         let frame_any = self;
 
-        let frame_any = match frame_any.try_extend_to::<marker::DecimationFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::DecimationFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::DecimationFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::DecimationFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::ThresholdFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::ThresholdFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::ThresholdFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::ThresholdFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::DisparityFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::DisparityFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::DisparityFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::DisparityFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::SpatialFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::SpatialFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::SpatialFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::SpatialFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::TemporalFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::TemporalFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::TemporalFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::TemporalFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::HoleFillingFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::HoleFillingFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::HoleFillingFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::HoleFillingFilter(frame)),
+                Err(frame) => frame,
+            };
 
-        let frame_any = match frame_any.try_extend_to::<marker::ZeroOrderFilterKind>()? {
-            Ok(frame) => return Ok(ExtendedProcessingBlock::ZeroOrderFilter(frame)),
-            Err(frame) => frame,
-        };
+        let frame_any =
+            match frame_any.try_extend_to::<processing_block_kind::ZeroOrderFilterKind>()? {
+                Ok(frame) => return Ok(ExtendedProcessingBlock::ZeroOrderFilter(frame)),
+                Err(frame) => frame,
+            };
 
         Ok(ExtendedProcessingBlock::Other(frame_any))
     }
@@ -674,7 +584,7 @@ impl RatesPrinter {
 
 impl<Kind> ToOptions for ProcessingBlock<Kind>
 where
-    Kind: marker::ProcessingBlockKind,
+    Kind: processing_block_kind::ProcessingBlockKind,
 {
     fn get_options_ptr(&self) -> NonNull<realsense_sys::rs2_options> {
         self.ptr.cast::<realsense_sys::rs2_options>()
@@ -683,7 +593,7 @@ where
 
 impl<Kind> Drop for ProcessingBlock<Kind>
 where
-    Kind: marker::ProcessingBlockKind,
+    Kind: processing_block_kind::ProcessingBlockKind,
 {
     fn drop(&mut self) {
         unsafe {
@@ -692,4 +602,7 @@ where
     }
 }
 
-unsafe impl<Kind> Send for ProcessingBlock<Kind> where Kind: marker::ProcessingBlockKind {}
+unsafe impl<Kind> Send for ProcessingBlock<Kind> where
+    Kind: processing_block_kind::ProcessingBlockKind
+{
+}

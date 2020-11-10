@@ -4,49 +4,9 @@ use crate::{
     base::{Extrinsics, Intrinsics, MotionIntrinsics, Resolution, StreamProfileData},
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, Format, StreamKind},
+    kind::{Format, StreamKind},
+    stream_profile_kind,
 };
-
-/// Marker traits and types for [StreamProfile].
-pub mod marker {
-    use super::*;
-
-    /// The marker traits of all kinds of StreamProfile.
-    pub trait StreamProfileKind {}
-
-    /// The marker traits of all kinds of StreamProfile except [Any](Any).
-    pub trait NonAnyStreamProfileKind
-    where
-        Self: StreamProfileKind,
-    {
-        const EXTENSION: Extension;
-    }
-
-    #[derive(Debug)]
-    pub struct Any;
-    impl StreamProfileKind for Any {}
-
-    #[derive(Debug)]
-    pub struct Video;
-    impl StreamProfileKind for Video {}
-    impl NonAnyStreamProfileKind for Video {
-        const EXTENSION: Extension = Extension::VideoProfile;
-    }
-
-    #[derive(Debug)]
-    pub struct Motion;
-    impl StreamProfileKind for Motion {}
-    impl NonAnyStreamProfileKind for Motion {
-        const EXTENSION: Extension = Extension::MotionProfile;
-    }
-
-    #[derive(Debug)]
-    pub struct Pose;
-    impl StreamProfileKind for Pose {}
-    impl NonAnyStreamProfileKind for Pose {
-        const EXTENSION: Extension = Extension::PoseProfile;
-    }
-}
 
 /// The enumeration of extended stream profile type returned by [StreamProfile::try_extend](StreamProfile::try_extend).
 #[derive(Debug)]
@@ -61,7 +21,7 @@ pub enum ExtendedStreamProfile {
 #[derive(Debug)]
 pub struct StreamProfile<Kind>
 where
-    Kind: marker::StreamProfileKind,
+    Kind: stream_profile_kind::StreamProfileKind,
 {
     ptr: NonNull<realsense_sys::rs2_stream_profile>,
     from_clone: bool,
@@ -70,14 +30,14 @@ where
 
 // type aliases
 
-pub type VideoStreamProfile = StreamProfile<marker::Video>;
-pub type MotionStreamProfile = StreamProfile<marker::Motion>;
-pub type PoseStreamProfile = StreamProfile<marker::Pose>;
-pub type AnyStreamProfile = StreamProfile<marker::Any>;
+pub type VideoStreamProfile = StreamProfile<stream_profile_kind::Video>;
+pub type MotionStreamProfile = StreamProfile<stream_profile_kind::Motion>;
+pub type PoseStreamProfile = StreamProfile<stream_profile_kind::Pose>;
+pub type AnyStreamProfile = StreamProfile<stream_profile_kind::Any>;
 
 impl<Kind> StreamProfile<Kind>
 where
-    Kind: marker::StreamProfileKind,
+    Kind: stream_profile_kind::StreamProfileKind,
 {
     /// Check whether the profile is default or not.
     pub fn is_default(&self) -> RsResult<bool> {
@@ -133,7 +93,7 @@ where
     pub fn get_extrinsics<P, K>(&self, to_stream: P) -> RsResult<Extrinsics>
     where
         P: Borrow<StreamProfile<K>>,
-        K: marker::StreamProfileKind,
+        K: stream_profile_kind::StreamProfileKind,
     {
         unsafe {
             let mut extrinsics = MaybeUninit::<realsense_sys::rs2_extrinsics>::uninit();
@@ -153,7 +113,7 @@ where
     pub fn set_extrinsics<P, K>(&self, to_stream: P, extrinsics: Extrinsics) -> RsResult<()>
     where
         P: Borrow<StreamProfile<K>>,
-        K: marker::StreamProfileKind,
+        K: stream_profile_kind::StreamProfileKind,
     {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -191,7 +151,7 @@ impl AnyStreamProfile {
     /// Check if the stream is extendable to the given extension.
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
-        Kind: marker::NonAnyStreamProfileKind,
+        Kind: stream_profile_kind::NonAnyStreamProfileKind,
     {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -208,7 +168,7 @@ impl AnyStreamProfile {
     /// Extends to a specific stream profile subtype.
     pub fn try_extend_to<Kind>(self) -> RsResult<Result<StreamProfile<Kind>, Self>>
     where
-        Kind: marker::NonAnyStreamProfileKind,
+        Kind: stream_profile_kind::NonAnyStreamProfileKind,
     {
         if self.is_extendable_to::<Kind>()? {
             let (ptr, from_clone) = unsafe { self.take() };
@@ -227,17 +187,17 @@ impl AnyStreamProfile {
     pub fn try_extend(self) -> RsResult<ExtendedStreamProfile> {
         let profile_any = self;
 
-        let profile_any = match profile_any.try_extend_to::<marker::Video>()? {
+        let profile_any = match profile_any.try_extend_to::<stream_profile_kind::Video>()? {
             Ok(profile) => return Ok(ExtendedStreamProfile::Video(profile)),
             Err(profile) => profile,
         };
 
-        let profile_any = match profile_any.try_extend_to::<marker::Motion>()? {
+        let profile_any = match profile_any.try_extend_to::<stream_profile_kind::Motion>()? {
             Ok(profile) => return Ok(ExtendedStreamProfile::Motion(profile)),
             Err(profile) => profile,
         };
 
-        let profile_any = match profile_any.try_extend_to::<marker::Pose>()? {
+        let profile_any = match profile_any.try_extend_to::<stream_profile_kind::Pose>()? {
             Ok(profile) => return Ok(ExtendedStreamProfile::Pose(profile)),
             Err(profile) => profile,
         };
@@ -305,7 +265,7 @@ impl MotionStreamProfile {
 
 impl<Kind> Drop for StreamProfile<Kind>
 where
-    Kind: marker::StreamProfileKind,
+    Kind: stream_profile_kind::StreamProfileKind,
 {
     fn drop(&mut self) {
         unsafe {
@@ -316,4 +276,4 @@ where
     }
 }
 
-unsafe impl<Kind> Send for StreamProfile<Kind> where Kind: marker::StreamProfileKind {}
+unsafe impl<Kind> Send for StreamProfile<Kind> where Kind: stream_profile_kind::StreamProfileKind {}

@@ -7,54 +7,15 @@ use crate::{
     context::Context,
     error::{Error as RsError, ErrorChecker, Result as RsResult},
     frame::{CompositeFrame, Frame, GenericFrameEx},
+    pipeline_kind,
     pipeline_profile::PipelineProfile,
 };
-
-/// Marker traits and types for [Pipeline].
-pub mod marker {
-    use super::*;
-
-    /// Marker trait for pipeline marker types.
-    pub trait PipelineState {
-        /// Clone the state with the underlying pointer. It is intended for internal use only.
-        ///
-        /// # Safety
-        /// You can to prevent [Drop::drop] to be called twice by calling this method.
-        unsafe fn unsafe_clone(&self) -> Self;
-    }
-
-    /// A marker type indicating the [Pipeline] is started.
-    #[derive(Debug)]
-    pub struct Active {
-        pub profile: PipelineProfile,
-        pub config: Option<Config>,
-    }
-
-    impl PipelineState for Active {
-        unsafe fn unsafe_clone(&self) -> Self {
-            Self {
-                profile: self.profile.unsafe_clone(),
-                config: self.config.as_ref().map(|config| config.unsafe_clone()),
-            }
-        }
-    }
-
-    /// A marker type indicating the [Pipeline] is stopped.
-    #[derive(Debug)]
-    pub struct Inactive;
-
-    impl PipelineState for Inactive {
-        unsafe fn unsafe_clone(&self) -> Self {
-            Self
-        }
-    }
-}
 
 /// Represents the data pipeline from a RealSense device.
 #[derive(Debug)]
 pub struct Pipeline<State>
 where
-    State: marker::PipelineState,
+    State: pipeline_kind::PipelineState,
 {
     ptr: NonNull<realsense_sys::rs2_pipeline>,
     context: Context,
@@ -63,8 +24,8 @@ where
 
 // type aliases
 
-pub type InactivePipeline = Pipeline<marker::Inactive>;
-pub type ActivePipeline = Pipeline<marker::Active>;
+pub type InactivePipeline = Pipeline<pipeline_kind::Inactive>;
+pub type ActivePipeline = Pipeline<pipeline_kind::Active>;
 
 impl InactivePipeline {
     /// Creates an instance.
@@ -88,7 +49,7 @@ impl InactivePipeline {
         let pipeline = Self {
             ptr: NonNull::new(ptr).unwrap(),
             context,
-            state: marker::Inactive,
+            state: pipeline_kind::Inactive,
         };
         Ok(pipeline)
     }
@@ -123,7 +84,7 @@ impl InactivePipeline {
             Pipeline {
                 ptr,
                 context,
-                state: marker::Active { profile, config },
+                state: pipeline_kind::Active { profile, config },
             }
         };
 
@@ -177,7 +138,7 @@ impl InactivePipeline {
             Pipeline {
                 ptr,
                 context,
-                state: marker::Active { profile, config },
+                state: pipeline_kind::Active { profile, config },
             }
         };
 
@@ -293,7 +254,7 @@ impl ActivePipeline {
             Pipeline {
                 ptr,
                 context,
-                state: marker::Inactive,
+                state: pipeline_kind::Inactive,
             }
         };
 
@@ -303,7 +264,7 @@ impl ActivePipeline {
 
 impl<State> Pipeline<State>
 where
-    State: marker::PipelineState,
+    State: pipeline_kind::PipelineState,
 {
     unsafe fn take(self) -> (NonNull<realsense_sys::rs2_pipeline>, Context, State) {
         // take fields without invoking drop()
@@ -318,7 +279,7 @@ where
 
 impl<State> Drop for Pipeline<State>
 where
-    State: marker::PipelineState,
+    State: pipeline_kind::PipelineState,
 {
     fn drop(&mut self) {
         unsafe {
@@ -327,4 +288,4 @@ where
     }
 }
 
-unsafe impl<State> Send for Pipeline<State> where State: marker::PipelineState {}
+unsafe impl<State> Send for Pipeline<State> where State: pipeline_kind::PipelineState {}

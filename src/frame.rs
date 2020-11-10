@@ -6,87 +6,11 @@ use crate::{
     base::{PoseData, Resolution, StreamProfileData},
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
+    frame_kind,
+    kind::{Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{AnySensor, DepthSensor},
     stream_profile::{AnyStreamProfile, StreamProfile},
 };
-
-/// Marker types and traits for [Frame].
-pub mod marker {
-    use super::*;
-
-    /// The marker trait for frame kinds.
-    pub trait FrameKind {}
-
-    /// The marker traits for frame kinds except [Any](Any).
-    pub trait NonAnyFrameKind
-    where
-        Self: FrameKind,
-    {
-        const EXTENSION: Extension;
-    }
-
-    #[derive(Debug)]
-    pub struct Composite;
-
-    impl FrameKind for Composite {}
-    impl NonAnyFrameKind for Composite {
-        const EXTENSION: Extension = Extension::CompositeFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Any;
-
-    impl FrameKind for Any {}
-
-    #[derive(Debug)]
-    pub struct Video;
-
-    impl FrameKind for Video {}
-    impl NonAnyFrameKind for Video {
-        const EXTENSION: Extension = Extension::VideoFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Motion;
-
-    impl FrameKind for Motion {}
-    impl NonAnyFrameKind for Motion {
-        const EXTENSION: Extension = Extension::MotionFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Depth;
-
-    impl FrameKind for Depth {}
-    impl NonAnyFrameKind for Depth {
-        const EXTENSION: Extension = Extension::DepthFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Disparity;
-
-    impl FrameKind for Disparity {}
-    impl NonAnyFrameKind for Disparity {
-        const EXTENSION: Extension = Extension::DisparityFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Pose;
-
-    impl FrameKind for Pose {}
-    impl NonAnyFrameKind for Pose {
-        const EXTENSION: Extension = Extension::PoseFrame;
-    }
-
-    #[derive(Debug)]
-    pub struct Points;
-
-    impl FrameKind for Points {}
-    impl NonAnyFrameKind for Points {
-        const EXTENSION: Extension = Extension::Points;
-    }
-}
 
 /// The trait provides common methods on frames of all kinds.
 pub trait GenericFrameEx
@@ -516,20 +440,20 @@ pub enum ExtendedFrame {
     Other(AnyFrame),
 }
 
-pub type PointsFrame = Frame<marker::Points>;
-pub type CompositeFrame = Frame<marker::Composite>;
-pub type VideoFrame = Frame<marker::Video>;
-pub type DepthFrame = Frame<marker::Depth>;
-pub type DisparityFrame = Frame<marker::Disparity>;
-pub type MotionFrame = Frame<marker::Motion>;
-pub type PoseFrame = Frame<marker::Pose>;
-pub type AnyFrame = Frame<marker::Any>;
+pub type PointsFrame = Frame<frame_kind::Points>;
+pub type CompositeFrame = Frame<frame_kind::Composite>;
+pub type VideoFrame = Frame<frame_kind::Video>;
+pub type DepthFrame = Frame<frame_kind::Depth>;
+pub type DisparityFrame = Frame<frame_kind::Disparity>;
+pub type MotionFrame = Frame<frame_kind::Motion>;
+pub type PoseFrame = Frame<frame_kind::Pose>;
+pub type AnyFrame = Frame<frame_kind::Any>;
 
 /// Represents a collection of sensor data.
 #[derive(Debug)]
 pub struct Frame<Kind>
 where
-    Kind: marker::FrameKind,
+    Kind: frame_kind::FrameKind,
 {
     pub(crate) ptr: NonNull<realsense_sys::rs2_frame>,
     _phantom: PhantomData<Kind>,
@@ -537,7 +461,7 @@ where
 
 impl<Kind> GenericFrameEx for Frame<Kind>
 where
-    Kind: marker::FrameKind,
+    Kind: frame_kind::FrameKind,
 {
     fn ptr(&self) -> NonNull<realsense_sys::rs2_frame> {
         self.ptr
@@ -569,12 +493,12 @@ impl DepthFrameEx for DisparityFrame {}
 
 impl DisparityFrameEx for DisparityFrame {}
 
-impl<Kind> Frame<Kind> where Kind: marker::FrameKind {}
+impl<Kind> Frame<Kind> where Kind: frame_kind::FrameKind {}
 
 impl AnyFrame {
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
-        Kind: marker::NonAnyFrameKind,
+        Kind: frame_kind::NonAnyFrameKind,
     {
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -590,7 +514,7 @@ impl AnyFrame {
 
     pub fn try_extend_to<Kind>(self) -> RsResult<Result<Frame<Kind>, Self>>
     where
-        Kind: marker::NonAnyFrameKind,
+        Kind: frame_kind::NonAnyFrameKind,
     {
         unsafe {
             let is_extendable = self.is_extendable_to::<Kind>()?;
@@ -610,37 +534,37 @@ impl AnyFrame {
     pub fn try_extend(self) -> RsResult<ExtendedFrame> {
         let frame_any = self;
 
-        let frame_any = match frame_any.try_extend_to::<marker::Points>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Points>()? {
             Ok(frame) => return Ok(ExtendedFrame::Points(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Composite>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Composite>()? {
             Ok(frame) => return Ok(ExtendedFrame::Composite(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Motion>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Motion>()? {
             Ok(frame) => return Ok(ExtendedFrame::Motion(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Pose>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Pose>()? {
             Ok(frame) => return Ok(ExtendedFrame::Pose(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Disparity>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Disparity>()? {
             Ok(frame) => return Ok(ExtendedFrame::Disparity(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Depth>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Depth>()? {
             Ok(frame) => return Ok(ExtendedFrame::Depth(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::Video>()? {
+        let frame_any = match frame_any.try_extend_to::<frame_kind::Video>()? {
             Ok(frame) => return Ok(ExtendedFrame::Video(frame)),
             Err(frame) => frame,
         };
@@ -719,7 +643,7 @@ impl CompositeFrame {
 
     pub fn first_of<Kind>(&self, stream: StreamKind) -> RsResult<Option<Frame<Kind>>>
     where
-        Kind: marker::NonAnyFrameKind,
+        Kind: frame_kind::NonAnyFrameKind,
     {
         for result in self.try_iter()? {
             let frame_any = result?;
@@ -733,15 +657,15 @@ impl CompositeFrame {
     }
 
     pub fn color_frame(&self) -> RsResult<Option<VideoFrame>> {
-        self.first_of::<marker::Video>(StreamKind::Color)
+        self.first_of::<frame_kind::Video>(StreamKind::Color)
     }
 
     pub fn depth_frame(&self) -> RsResult<Option<DepthFrame>> {
-        self.first_of::<marker::Depth>(StreamKind::Depth)
+        self.first_of::<frame_kind::Depth>(StreamKind::Depth)
     }
 
     pub fn pose_frame(&self) -> RsResult<Option<PoseFrame>> {
-        self.first_of::<marker::Pose>(StreamKind::Pose)
+        self.first_of::<frame_kind::Pose>(StreamKind::Pose)
     }
 }
 
@@ -860,7 +784,7 @@ impl IntoIterator for CompositeFrame {
 
 impl<Kind> Clone for Frame<Kind>
 where
-    Kind: marker::FrameKind,
+    Kind: frame_kind::FrameKind,
 {
     fn clone(&self) -> Self {
         self.try_clone().unwrap()
@@ -869,7 +793,7 @@ where
 
 impl<Kind> Drop for Frame<Kind>
 where
-    Kind: marker::FrameKind,
+    Kind: frame_kind::FrameKind,
 {
     fn drop(&mut self) {
         unsafe {
@@ -878,8 +802,8 @@ where
     }
 }
 
-unsafe impl<Kind> Send for Frame<Kind> where Kind: marker::FrameKind {}
-unsafe impl<Kind> Sync for Frame<Kind> where Kind: marker::FrameKind {}
+unsafe impl<Kind> Send for Frame<Kind> where Kind: frame_kind::FrameKind {}
+unsafe impl<Kind> Sync for Frame<Kind> where Kind: frame_kind::FrameKind {}
 
 /// The iterator type returned by [Frame::try_into_iter](Frame::try_into_iter).
 #[derive(Debug)]
