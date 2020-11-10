@@ -502,7 +502,7 @@ impl PointCloud {
             ExtendedFrame::Composite(composite_frame) => {
                 for result in composite_frame.try_into_iter()? {
                     let frame = result?;
-                    if let Ok(points_frame) = frame.try_extend_to::<frame_marker::Points>()? {
+                    if let Ok(points_frame) = frame.try_extend_to()? {
                         return Ok(points_frame);
                     }
                 }
@@ -536,7 +536,7 @@ impl PointCloud {
             ExtendedFrame::Composite(composite_frame) => {
                 for result in composite_frame.try_into_iter()? {
                     let frame = result?;
-                    if let Ok(points_frame) = frame.try_extend_to::<frame_marker::Points>()? {
+                    if let Ok(points_frame) = frame.try_extend_to()? {
                         return Ok(points_frame);
                     }
                 }
@@ -642,7 +642,7 @@ impl Colorizer {
 
     pub fn colorize(&mut self, depth_frame: DepthFrame) -> RsResult<VideoFrame> {
         let frame_any = self.process(depth_frame)?;
-        let color_frame = frame_any.try_extend_to::<frame_marker::Video>()?.unwrap();
+        let color_frame: VideoFrame = frame_any.try_extend_to()?.unwrap();
         Ok(color_frame)
     }
 }
