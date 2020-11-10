@@ -22,7 +22,7 @@ fn async_test() -> Result<()> {
     let mut counter = GLOBAL_MUTEX.lock().unwrap();
 
     // init async runtime
-    let mut runtime = Runtime::new()?;
+    let runtime = Runtime::new()?;
 
     runtime.block_on(async {
         // init pipeline
