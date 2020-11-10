@@ -13,10 +13,10 @@ pub const RS2_UNSIGNED_UPDATE_MODE_UPDATE: u32 = 0;
 pub const RS2_UNSIGNED_UPDATE_MODE_READ_ONLY: u32 = 1;
 pub const RS2_UNSIGNED_UPDATE_MODE_FULL: u32 = 2;
 pub const RS2_API_MAJOR_VERSION: u32 = 2;
-pub const RS2_API_MINOR_VERSION: u32 = 36;
+pub const RS2_API_MINOR_VERSION: u32 = 39;
 pub const RS2_API_PATCH_VERSION: u32 = 0;
 pub const RS2_API_BUILD_VERSION: u32 = 0;
-pub const RS2_API_VERSION: u32 = 23600;
+pub const RS2_API_VERSION: u32 = 23900;
 pub const RS2_DEFAULT_TIMEOUT: u32 = 15000;
 #[doc = "< Frames didn't arrived within 5 seconds"]
 pub const rs2_notification_category_RS2_NOTIFICATION_CATEGORY_FRAMES_TIMEOUT:
@@ -781,7 +781,9 @@ pub const rs2_extension_RS2_EXTENSION_FW_LOGGER: rs2_extension = 47;
 pub const rs2_extension_RS2_EXTENSION_AUTO_CALIBRATION_FILTER: rs2_extension = 48;
 pub const rs2_extension_RS2_EXTENSION_DEVICE_CALIBRATION: rs2_extension = 49;
 pub const rs2_extension_RS2_EXTENSION_CALIBRATED_SENSOR: rs2_extension = 50;
-pub const rs2_extension_RS2_EXTENSION_COUNT: rs2_extension = 51;
+pub const rs2_extension_RS2_EXTENSION_HDR_MERGE: rs2_extension = 51;
+pub const rs2_extension_RS2_EXTENSION_SEQUENCE_ID_FILTER: rs2_extension = 52;
+pub const rs2_extension_RS2_EXTENSION_COUNT: rs2_extension = 53;
 #[doc = " \\brief Specifies advanced interfaces (capabilities) objects may implement."]
 pub type rs2_extension = u32;
 extern "C" {
@@ -2429,8 +2431,9 @@ extern "C" {
         error: *mut *mut rs2_error,
     ) -> *const rs2_raw_data_buffer;
 }
-pub const rs2_calibration_type_RS2_CALIBRATION_DEPTH_TO_RGB: rs2_calibration_type = 0;
-pub const rs2_calibration_type_RS2_CALIBRATION_TYPE_COUNT: rs2_calibration_type = 1;
+pub const rs2_calibration_type_RS2_CALIBRATION_AUTO_DEPTH_TO_RGB: rs2_calibration_type = 0;
+pub const rs2_calibration_type_RS2_CALIBRATION_MANUAL_DEPTH_TO_RGB: rs2_calibration_type = 1;
+pub const rs2_calibration_type_RS2_CALIBRATION_TYPE_COUNT: rs2_calibration_type = 2;
 #[doc = " Used in device_calibration; enumerates the different calibration types"]
 #[doc = " available for that extension."]
 pub type rs2_calibration_type = u32;
@@ -2439,17 +2442,19 @@ extern "C" {
         arg1: rs2_calibration_type,
     ) -> *const ::std::os::raw::c_char;
 }
-pub const rs2_calibration_status_RS2_CALIBRATION_SPECIAL_FRAME: rs2_calibration_status = 0;
-pub const rs2_calibration_status_RS2_CALIBRATION_STARTED: rs2_calibration_status = 1;
-pub const rs2_calibration_status_RS2_CALIBRATION_NOT_NEEDED: rs2_calibration_status = 2;
-pub const rs2_calibration_status_RS2_CALIBRATION_SUCCESSFUL: rs2_calibration_status = 3;
+pub const rs2_calibration_status_RS2_CALIBRATION_TRIGGERED: rs2_calibration_status = 0;
+pub const rs2_calibration_status_RS2_CALIBRATION_SPECIAL_FRAME: rs2_calibration_status = 1;
+pub const rs2_calibration_status_RS2_CALIBRATION_STARTED: rs2_calibration_status = 2;
+pub const rs2_calibration_status_RS2_CALIBRATION_NOT_NEEDED: rs2_calibration_status = 3;
+pub const rs2_calibration_status_RS2_CALIBRATION_SUCCESSFUL: rs2_calibration_status = 4;
 pub const rs2_calibration_status_RS2_CALIBRATION_RETRY: rs2_calibration_status = -1;
 pub const rs2_calibration_status_RS2_CALIBRATION_FAILED: rs2_calibration_status = -2;
 pub const rs2_calibration_status_RS2_CALIBRATION_SCENE_INVALID: rs2_calibration_status = -3;
 pub const rs2_calibration_status_RS2_CALIBRATION_BAD_RESULT: rs2_calibration_status = -4;
-pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_FIRST: rs2_calibration_status = -4;
-pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_LAST: rs2_calibration_status = 3;
-pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_COUNT: rs2_calibration_status = 8;
+pub const rs2_calibration_status_RS2_CALIBRATION_BAD_CONDITIONS: rs2_calibration_status = -5;
+pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_FIRST: rs2_calibration_status = -5;
+pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_LAST: rs2_calibration_status = 4;
+pub const rs2_calibration_status_RS2_CALIBRATION_STATUS_COUNT: rs2_calibration_status = 10;
 #[doc = " Used in device_calibration with rs2_calibration_change_callback"]
 pub type rs2_calibration_status = i32;
 extern "C" {
@@ -2661,7 +2666,16 @@ pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_FRAME_LED_POWER: rs2_frame
     30;
 #[doc = "< The number of transmitted payload bytes, not including metadata"]
 pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_RAW_FRAME_SIZE: rs2_frame_metadata_value = 31;
-pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_COUNT: rs2_frame_metadata_value = 32;
+#[doc = "< GPIO input data"]
+pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_GPIO_INPUT_DATA: rs2_frame_metadata_value =
+    32;
+#[doc = "< sub-preset id"]
+pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_SEQUENCE_NAME: rs2_frame_metadata_value = 33;
+#[doc = "< sub-preset sequence id"]
+pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_SEQUENCE_ID: rs2_frame_metadata_value = 34;
+#[doc = "< sub-preset sequence size"]
+pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_SEQUENCE_SIZE: rs2_frame_metadata_value = 35;
+pub const rs2_frame_metadata_value_RS2_FRAME_METADATA_COUNT: rs2_frame_metadata_value = 36;
 #[doc = " \\brief Per-Frame-Metadata is the set of read-only properties that might be exposed for each individual frame."]
 pub type rs2_frame_metadata_value = u32;
 extern "C" {
@@ -3046,7 +3060,7 @@ pub const rs2_option_RS2_OPTION_MOTION_RANGE: rs2_option = 15;
 pub const rs2_option_RS2_OPTION_FILTER_OPTION: rs2_option = 16;
 #[doc = "< The confidence level threshold used by the Depth algorithm pipe to set whether a pixel will get a valid range or will be marked with invalid range"]
 pub const rs2_option_RS2_OPTION_CONFIDENCE_THRESHOLD: rs2_option = 17;
-#[doc = "< Emitter select: 0 – disable all emitters. 1 – enable laser. 2 – enable auto laser. 3 – enable LED."]
+#[doc = "< Emitter select: 0 \u{2013} disable all emitters. 1 \u{2013} enable laser. 2 \u{2013} enable auto laser. 3 \u{2013} enable LED."]
 pub const rs2_option_RS2_OPTION_EMITTER_ENABLED: rs2_option = 18;
 #[doc = "< Number of frames the user is allowed to keep per stream. Trying to hold-on to more frames will cause frame-drops."]
 pub const rs2_option_RS2_OPTION_FRAMES_QUEUE_SIZE: rs2_option = 19;
@@ -3159,8 +3173,18 @@ pub const rs2_option_RS2_OPTION_THERMAL_COMPENSATION: rs2_option = 72;
 #[doc = "< Enable depth & color frame sync with periodic calibration for proper alignment"]
 pub const rs2_option_RS2_OPTION_TRIGGER_CAMERA_ACCURACY_HEALTH: rs2_option = 73;
 pub const rs2_option_RS2_OPTION_RESET_CAMERA_ACCURACY_HEALTH: rs2_option = 74;
+#[doc = "< Set host performance mode to optimize device settings so host can keep up with workload, for example, USB transaction granularity, setting option to low performance host leads to larger USB transaction size and reduced number of transactions which improves performance and stability if host is relatively weak as compared to workload"]
+pub const rs2_option_RS2_OPTION_HOST_PERFORMANCE: rs2_option = 75;
+#[doc = "< Enable / disable HDR"]
+pub const rs2_option_RS2_OPTION_HDR_ENABLED: rs2_option = 76;
+#[doc = "< HDR Sequence size"]
+pub const rs2_option_RS2_OPTION_SEQUENCE_NAME: rs2_option = 77;
+#[doc = "< HDR Sequence size"]
+pub const rs2_option_RS2_OPTION_SEQUENCE_SIZE: rs2_option = 78;
+#[doc = "< HDR Sequence ID - 0 is not HDR; sequence ID for HDR configuartion starts from 1"]
+pub const rs2_option_RS2_OPTION_SEQUENCE_ID: rs2_option = 79;
 #[doc = "< Number of enumeration values. Not a valid input: intended to be used in for-loops."]
-pub const rs2_option_RS2_OPTION_COUNT: rs2_option = 75;
+pub const rs2_option_RS2_OPTION_COUNT: rs2_option = 80;
 #[doc = " \\brief Defines general configuration controls."]
 #[doc = "These can generally be mapped to camera UVC controls, and can be set / queried at any time unless stated otherwise."]
 pub type rs2_option = u32;
@@ -3252,6 +3276,32 @@ pub const rs2_ambient_light_RS2_AMBIENT_LIGHT_LOW_AMBIENT: rs2_ambient_light = 2
 pub type rs2_ambient_light = u32;
 extern "C" {
     pub fn rs2_ambient_light_to_string(preset: rs2_ambient_light) -> *const ::std::os::raw::c_char;
+}
+#[doc = "< not triggered until you give _NOW"]
+pub const rs2_cah_trigger_RS2_CAH_TRIGGER_MANUAL: rs2_cah_trigger = 0;
+#[doc = "< triggers CAH and leaves previous value intact!"]
+pub const rs2_cah_trigger_RS2_CAH_TRIGGER_NOW: rs2_cah_trigger = 1;
+#[doc = "< triggered periodically or with certain conditions"]
+pub const rs2_cah_trigger_RS2_CAH_TRIGGER_AUTO: rs2_cah_trigger = 2;
+#[doc = "< Number of enumeration values. Not a valid input: intended to be used in for-loops."]
+pub const rs2_cah_trigger_RS2_CAH_TRIGGER_COUNT: rs2_cah_trigger = 3;
+#[doc = " \\brief values for RS2_OPTION_TRIGGER_CAMERA_ACCURACY_HEALTH option."]
+pub type rs2_cah_trigger = u32;
+extern "C" {
+    pub fn rs2_cah_trigger_to_string(preset: rs2_cah_trigger) -> *const ::std::os::raw::c_char;
+}
+#[doc = "< no change in settings, use device defaults"]
+pub const rs2_host_perf_mode_RS2_HOST_PERF_DEFAULT: rs2_host_perf_mode = 0;
+#[doc = "< low performance host mode, if host cannot keep up with workload, this option may improve stability, for example, it sets larger USB transaction granularity, reduces number of transactions and improve performance and stability on relatively weak hosts as compared to the workload"]
+pub const rs2_host_perf_mode_RS2_HOST_PERF_LOW: rs2_host_perf_mode = 1;
+#[doc = "< high performance host mode, if host is strong as compared to the work and can handle workload without delay, this option sets smaller USB transactions granularity and as result larger number of transactions and workload on host, but reduces chance in device frame drops"]
+pub const rs2_host_perf_mode_RS2_HOST_PERF_HIGH: rs2_host_perf_mode = 2;
+#[doc = "< Number of enumeration values. Not a valid input: intended to be used in for-loops."]
+pub const rs2_host_perf_mode_RS2_HOST_PERF_COUNT: rs2_host_perf_mode = 3;
+#[doc = " \\brief values for RS2_OPTION_HOST_PERFORMANCE option."]
+pub type rs2_host_perf_mode = u32;
+extern "C" {
+    pub fn rs2_host_perf_mode_to_string(perf: rs2_host_perf_mode) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
     #[doc = " check if an option is read-only"]
@@ -3662,6 +3712,20 @@ extern "C" {
     pub fn rs2_create_huffman_depth_decompress_block(
         error: *mut *mut rs2_error,
     ) -> *mut rs2_processing_block;
+}
+extern "C" {
+    #[doc = " Creates a hdr_merge processing block."]
+    #[doc = " The block merges between two depth frames with different exposure values"]
+    #[doc = " \\param[out] error  if non-null, receives any error that occurs during this call, otherwise, errors are ignored"]
+    pub fn rs2_create_hdr_merge_processing_block(
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+}
+extern "C" {
+    #[doc = " Creates a sequence_id_filter processing block."]
+    #[doc = " The block lets frames with the selected sequence id pass and blocks frames with other values"]
+    #[doc = " \\param[out] error  if non-null, receives any error that occurs during this call, otherwise, errors are ignored"]
+    pub fn rs2_create_sequence_id_filter(error: *mut *mut rs2_error) -> *mut rs2_processing_block;
 }
 extern "C" {
     #[doc = " Retrieve processing block specific information, like name."]
