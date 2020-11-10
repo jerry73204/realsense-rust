@@ -123,59 +123,59 @@ where
         Ok(list)
     }
 
-    pub fn name(&self) -> Result<&CStr> {
+    pub fn name(&self) -> Result<&str> {
         self.info(CameraInfo::Name)
     }
 
-    pub fn serial_number(&self) -> Result<&CStr> {
+    pub fn serial_number(&self) -> Result<&str> {
         self.info(CameraInfo::SerialNumber)
     }
 
-    pub fn recommended_firmware_version(&self) -> Result<&CStr> {
+    pub fn recommended_firmware_version(&self) -> Result<&str> {
         self.info(CameraInfo::RecommendedFirmwareVersion)
     }
 
-    pub fn physical_port(&self) -> Result<&CStr> {
+    pub fn physical_port(&self) -> Result<&str> {
         self.info(CameraInfo::PhysicalPort)
     }
 
-    pub fn debug_op_code(&self) -> Result<&CStr> {
+    pub fn debug_op_code(&self) -> Result<&str> {
         self.info(CameraInfo::DebugOpCode)
     }
 
-    pub fn advanced_mode(&self) -> Result<&CStr> {
+    pub fn advanced_mode(&self) -> Result<&str> {
         self.info(CameraInfo::AdvancedMode)
     }
 
-    pub fn product_id(&self) -> Result<&CStr> {
+    pub fn product_id(&self) -> Result<&str> {
         self.info(CameraInfo::ProductId)
     }
 
-    pub fn camera_locked(&self) -> Result<&CStr> {
+    pub fn camera_locked(&self) -> Result<&str> {
         self.info(CameraInfo::CameraLocked)
     }
 
-    pub fn usb_type_descriptor(&self) -> Result<&CStr> {
+    pub fn usb_type_descriptor(&self) -> Result<&str> {
         self.info(CameraInfo::UsbTypeDescriptor)
     }
 
-    pub fn product_line(&self) -> Result<&CStr> {
+    pub fn product_line(&self) -> Result<&str> {
         self.info(CameraInfo::ProductLine)
     }
 
-    pub fn asic_serial_number(&self) -> Result<&CStr> {
+    pub fn asic_serial_number(&self) -> Result<&str> {
         self.info(CameraInfo::AsicSerialNumber)
     }
 
-    pub fn firmware_update_id(&self) -> Result<&CStr> {
+    pub fn firmware_update_id(&self) -> Result<&str> {
         self.info(CameraInfo::FirmwareUpdateId)
     }
 
-    pub fn count(&self) -> Result<&CStr> {
+    pub fn count(&self) -> Result<&str> {
         self.info(CameraInfo::Count)
     }
 
-    pub fn info(&self, kind: CameraInfo) -> Result<&CStr> {
+    pub fn info(&self, kind: CameraInfo) -> Result<&str> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_sensor_info(
@@ -186,7 +186,8 @@ where
             checker.check()?;
             ptr
         };
-        let string = unsafe { CStr::from_ptr(ptr) };
+        // TODO: deallicate this CStr?
+        let string = unsafe { CStr::from_ptr(ptr).to_str().unwrap() };
         Ok(string)
     }
 
