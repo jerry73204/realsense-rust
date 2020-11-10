@@ -3,7 +3,7 @@
 use crate::{
     common::*,
     device::Device,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
 };
 
 /// Represents a collection of devices.
@@ -14,7 +14,7 @@ pub struct DeviceHub {
 
 impl DeviceHub {
     /// Block and wait until a device is available.
-    pub fn wait_for_device(&self) -> RsResult<Device> {
+    pub fn wait_for_device(&self) -> Result<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_device_hub_wait_for_device(
@@ -28,7 +28,7 @@ impl DeviceHub {
     }
 
     /// Check whether the given device is connected to the device hub.
-    pub fn is_device_connected(&self, device: &Device) -> RsResult<bool> {
+    pub fn is_device_connected(&self, device: &Device) -> Result<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_device_hub_is_device_connected(

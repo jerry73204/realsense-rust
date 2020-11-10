@@ -2,7 +2,7 @@
 
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     processing_block::AnyProcessingBlock,
 };
 
@@ -14,7 +14,7 @@ pub struct ProcessingBlockList {
 
 impl ProcessingBlockList {
     /// Retrieves the [AnyProcessingBlock](AnyProcessingBlock) instance at index.
-    pub fn get(&mut self, index: usize) -> RsResult<AnyProcessingBlock> {
+    pub fn get(&mut self, index: usize) -> Result<AnyProcessingBlock> {
         let block = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_processing_block(
@@ -29,7 +29,7 @@ impl ProcessingBlockList {
     }
 
     /// Returns the length of list.
-    pub fn len(&mut self) -> RsResult<usize> {
+    pub fn len(&mut self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_recommended_processing_blocks_count(
@@ -42,12 +42,12 @@ impl ProcessingBlockList {
     }
 
     /// Checks if the list is empty.
-    pub fn is_empty(&mut self) -> RsResult<bool> {
+    pub fn is_empty(&mut self) -> Result<bool> {
         Ok(self.len()? == 0)
     }
 
     /// Converts to iterator type.
-    pub fn try_into_iter(mut self) -> RsResult<ProcessingBlockListIntoIter> {
+    pub fn try_into_iter(mut self) -> Result<ProcessingBlockListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
         let iter = ProcessingBlockListIntoIter { len, index: 0, ptr };
@@ -66,13 +66,13 @@ impl ProcessingBlockList {
 }
 
 impl IntoIterator for ProcessingBlockList {
-    type Item = RsResult<AnyProcessingBlock>;
+    type Item = Result<AnyProcessingBlock>;
     type IntoIter = ProcessingBlockListIntoIter;
 
     /// The method calls [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter).
     ///
     /// # Panics
-    /// It panics if [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter) returns [Err](Result::Err).
+    /// It panics if [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter) returns error.
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
@@ -94,7 +94,7 @@ pub struct ProcessingBlockListIntoIter {
 }
 
 impl Iterator for ProcessingBlockListIntoIter {
-    type Item = RsResult<AnyProcessingBlock>;
+    type Item = Result<AnyProcessingBlock>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {

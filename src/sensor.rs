@@ -3,7 +3,7 @@
 use crate::{
     common::*,
     device::Device,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     kind::{CameraInfo, Rs2Option},
     options::ToOptions,
     processing_block_list::ProcessingBlockList,
@@ -54,7 +54,7 @@ where
     Kind: sensor_kind::SensorKind,
 {
     /// Gets the corresponding device for sensor.
-    pub fn device(&self) -> RsResult<Device> {
+    pub fn device(&self) -> Result<Device> {
         let device = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_create_device_from_sensor(
@@ -70,7 +70,7 @@ where
     /// Gets an attribute on sensor.
     ///
     /// It will return error if the attribute is not available on sensor.
-    pub fn get_option(&self, option: Rs2Option) -> RsResult<f32> {
+    pub fn get_option(&self, option: Rs2Option) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_option(
@@ -83,7 +83,7 @@ where
         }
     }
 
-    // pub fn set_option(&mut self, option: Rs2Option, value: f32) -> RsResult<()> {
+    // pub fn set_option(&mut self, option: Rs2Option, value: f32) -> Result<()> {
     //     unsafe {
     //         let mut checker = ErrorChecker::new();
     //         let val = realsense_sys::rs2_set_option(
@@ -98,7 +98,7 @@ where
     // }
 
     /// List stream profiles on sensor.
-    pub fn stream_profiles(&self) -> RsResult<StreamProfileList> {
+    pub fn stream_profiles(&self) -> Result<StreamProfileList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr =
@@ -110,7 +110,7 @@ where
     }
 
     /// Retrieves list of recommended processing blocks.
-    pub fn recommended_processing_blocks(&self) -> RsResult<ProcessingBlockList> {
+    pub fn recommended_processing_blocks(&self) -> Result<ProcessingBlockList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_recommended_processing_blocks(
@@ -123,59 +123,59 @@ where
         Ok(list)
     }
 
-    pub fn name(&self) -> RsResult<&CStr> {
+    pub fn name(&self) -> Result<&CStr> {
         self.info(CameraInfo::Name)
     }
 
-    pub fn serial_number(&self) -> RsResult<&CStr> {
+    pub fn serial_number(&self) -> Result<&CStr> {
         self.info(CameraInfo::SerialNumber)
     }
 
-    pub fn recommended_firmware_version(&self) -> RsResult<&CStr> {
+    pub fn recommended_firmware_version(&self) -> Result<&CStr> {
         self.info(CameraInfo::RecommendedFirmwareVersion)
     }
 
-    pub fn physical_port(&self) -> RsResult<&CStr> {
+    pub fn physical_port(&self) -> Result<&CStr> {
         self.info(CameraInfo::PhysicalPort)
     }
 
-    pub fn debug_op_code(&self) -> RsResult<&CStr> {
+    pub fn debug_op_code(&self) -> Result<&CStr> {
         self.info(CameraInfo::DebugOpCode)
     }
 
-    pub fn advanced_mode(&self) -> RsResult<&CStr> {
+    pub fn advanced_mode(&self) -> Result<&CStr> {
         self.info(CameraInfo::AdvancedMode)
     }
 
-    pub fn product_id(&self) -> RsResult<&CStr> {
+    pub fn product_id(&self) -> Result<&CStr> {
         self.info(CameraInfo::ProductId)
     }
 
-    pub fn camera_locked(&self) -> RsResult<&CStr> {
+    pub fn camera_locked(&self) -> Result<&CStr> {
         self.info(CameraInfo::CameraLocked)
     }
 
-    pub fn usb_type_descriptor(&self) -> RsResult<&CStr> {
+    pub fn usb_type_descriptor(&self) -> Result<&CStr> {
         self.info(CameraInfo::UsbTypeDescriptor)
     }
 
-    pub fn product_line(&self) -> RsResult<&CStr> {
+    pub fn product_line(&self) -> Result<&CStr> {
         self.info(CameraInfo::ProductLine)
     }
 
-    pub fn asic_serial_number(&self) -> RsResult<&CStr> {
+    pub fn asic_serial_number(&self) -> Result<&CStr> {
         self.info(CameraInfo::AsicSerialNumber)
     }
 
-    pub fn firmware_update_id(&self) -> RsResult<&CStr> {
+    pub fn firmware_update_id(&self) -> Result<&CStr> {
         self.info(CameraInfo::FirmwareUpdateId)
     }
 
-    pub fn count(&self) -> RsResult<&CStr> {
+    pub fn count(&self) -> Result<&CStr> {
         self.info(CameraInfo::Count)
     }
 
-    pub fn info(&self, kind: CameraInfo) -> RsResult<&CStr> {
+    pub fn info(&self, kind: CameraInfo) -> Result<&CStr> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_sensor_info(
@@ -190,7 +190,7 @@ where
         Ok(string)
     }
 
-    pub fn is_info_supported(&self, kind: CameraInfo) -> RsResult<bool> {
+    pub fn is_info_supported(&self, kind: CameraInfo) -> Result<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_supports_sensor_info(
@@ -219,7 +219,7 @@ where
 }
 
 impl AnySensor {
-    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    pub fn is_extendable_to<Kind>(&self) -> Result<bool>
     where
         Kind: sensor_kind::NonAnySensorKind,
     {
@@ -236,7 +236,7 @@ impl AnySensor {
     }
 
     /// Extends to a specific sensor subtype.
-    pub fn try_extend_to<Kind>(self) -> RsResult<Result<Sensor<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<Sensor<Kind>, Self>>
     where
         Kind: sensor_kind::NonAnySensorKind,
     {
@@ -253,7 +253,7 @@ impl AnySensor {
     }
 
     /// Extends to one of a sensor subtype.
-    pub fn try_extend(self) -> RsResult<ExtendedSensor> {
+    pub fn try_extend(self) -> Result<ExtendedSensor> {
         let sensor_any = self;
 
         let sensor_any = match sensor_any.try_extend_to::<sensor_kind::DepthStereo>()? {
@@ -307,7 +307,7 @@ impl AnySensor {
 
 impl DepthSensor {
     /// Gets the depth units of depth sensor.
-    pub fn depth_units(&self) -> RsResult<f32> {
+    pub fn depth_units(&self) -> Result<f32> {
         self.get_option(Rs2Option::DepthUnits)
     }
 }

@@ -3,7 +3,7 @@
 use crate::{
     base::{Extrinsics, Intrinsics, MotionIntrinsics, Resolution, StreamProfileData},
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     kind::{Format, StreamKind},
     stream_profile_kind,
 };
@@ -40,7 +40,7 @@ where
     Kind: stream_profile_kind::StreamProfileKind,
 {
     /// Check whether the profile is default or not.
-    pub fn is_default(&self) -> RsResult<bool> {
+    pub fn is_default(&self) -> Result<bool> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_is_stream_profile_default(
@@ -53,7 +53,7 @@ where
     }
 
     /// Gets the attributes of stream.
-    pub fn get_data(&self) -> RsResult<StreamProfileData> {
+    pub fn get_data(&self) -> Result<StreamProfileData> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut stream = MaybeUninit::uninit();
@@ -90,7 +90,7 @@ where
     // }
 
     /// Gets the extrinsic parameters to another stream.
-    pub fn get_extrinsics<P, K>(&self, to_stream: P) -> RsResult<Extrinsics>
+    pub fn get_extrinsics<P, K>(&self, to_stream: P) -> Result<Extrinsics>
     where
         P: Borrow<StreamProfile<K>>,
         K: stream_profile_kind::StreamProfileKind,
@@ -110,7 +110,7 @@ where
     }
 
     /// Sets the extrinsic parameters to another stream.
-    pub fn set_extrinsics<P, K>(&self, to_stream: P, extrinsics: Extrinsics) -> RsResult<()>
+    pub fn set_extrinsics<P, K>(&self, to_stream: P, extrinsics: Extrinsics) -> Result<()>
     where
         P: Borrow<StreamProfile<K>>,
         K: stream_profile_kind::StreamProfileKind,
@@ -149,7 +149,7 @@ where
 
 impl AnyStreamProfile {
     /// Check if the stream is extendable to the given extension.
-    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    pub fn is_extendable_to<Kind>(&self) -> Result<bool>
     where
         Kind: stream_profile_kind::NonAnyStreamProfileKind,
     {
@@ -166,7 +166,7 @@ impl AnyStreamProfile {
     }
 
     /// Extends to a specific stream profile subtype.
-    pub fn try_extend_to<Kind>(self) -> RsResult<Result<StreamProfile<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<StreamProfile<Kind>, Self>>
     where
         Kind: stream_profile_kind::NonAnyStreamProfileKind,
     {
@@ -184,7 +184,7 @@ impl AnyStreamProfile {
     }
 
     /// Extends to one of a stream profile subtype.
-    pub fn try_extend(self) -> RsResult<ExtendedStreamProfile> {
+    pub fn try_extend(self) -> Result<ExtendedStreamProfile> {
         let profile_any = self;
 
         let profile_any = match profile_any.try_extend_to::<stream_profile_kind::Video>()? {
@@ -208,7 +208,7 @@ impl AnyStreamProfile {
 
 impl VideoStreamProfile {
     /// Gets the resolution of stream.
-    pub fn resolution(&self) -> RsResult<Resolution> {
+    pub fn resolution(&self) -> Result<Resolution> {
         let mut width = MaybeUninit::uninit();
         let mut height = MaybeUninit::uninit();
         let resolution = unsafe {
@@ -230,7 +230,7 @@ impl VideoStreamProfile {
     }
 
     /// Gets the intrinsic parameters.
-    pub fn intrinsics(&self) -> RsResult<Intrinsics> {
+    pub fn intrinsics(&self) -> Result<Intrinsics> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut intrinsics = MaybeUninit::<realsense_sys::rs2_intrinsics>::uninit();
@@ -247,7 +247,7 @@ impl VideoStreamProfile {
 
 impl MotionStreamProfile {
     /// Gets the motion intrinsic parameters.
-    pub fn motion_intrinsics(&self) -> RsResult<MotionIntrinsics> {
+    pub fn motion_intrinsics(&self) -> Result<MotionIntrinsics> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut intrinsics =

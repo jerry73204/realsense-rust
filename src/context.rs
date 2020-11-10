@@ -4,7 +4,7 @@ use crate::{
     common::*,
     device_hub::DeviceHub,
     device_list::DeviceList,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
 };
 
 #[derive(Debug)]
@@ -14,7 +14,7 @@ pub struct Context {
 
 impl Context {
     /// Create an instance.
-    pub fn new() -> RsResult<Self> {
+    pub fn new() -> Result<Self> {
         let ptr = {
             let mut checker = ErrorChecker::new();
             let context = unsafe {
@@ -35,7 +35,7 @@ impl Context {
     }
 
     /// Create an [DeviceHub](DeviceHub) instance.
-    pub fn create_device_hub(&self) -> RsResult<DeviceHub> {
+    pub fn create_device_hub(&self) -> Result<DeviceHub> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr =
@@ -51,7 +51,7 @@ impl Context {
     }
 
     /// Discover available devices.
-    pub fn query_devices(&self, product_mask: Option<c_int>) -> RsResult<DeviceList> {
+    pub fn query_devices(&self, product_mask: Option<c_int>) -> Result<DeviceList> {
         let list = match product_mask {
             Some(mask) => unsafe {
                 let mut checker = ErrorChecker::new();
@@ -76,7 +76,7 @@ impl Context {
     }
 
     /// Add device file to context.
-    pub fn add_device<P>(&mut self, file: P) -> RsResult<()>
+    pub fn add_device<P>(&mut self, file: P) -> Result<()>
     where
         P: AsRef<Path>,
     {
@@ -98,7 +98,7 @@ impl Context {
     }
 
     // /// Remove device file from context. (unimplemented)
-    // pub fn remove_device<P>(&mut self, file: P) -> RsResult<()>
+    // pub fn remove_device<P>(&mut self, file: P) -> Result<()>
     // where
     //     P: AsRef<Path>,
     // {

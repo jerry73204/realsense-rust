@@ -3,7 +3,7 @@
 use crate::{
     common::*,
     device::Device,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     stream_profile_list::StreamProfileList,
 };
 
@@ -14,7 +14,7 @@ pub struct PipelineProfile {
 
 impl PipelineProfile {
     /// Gets corresponding device of pipeline.
-    pub fn device(&self) -> RsResult<Device> {
+    pub fn device(&self) -> Result<Device> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_pipeline_profile_get_device(
@@ -30,7 +30,7 @@ impl PipelineProfile {
     }
 
     /// Gets iterable list of streams of pipeline.
-    pub fn streams(&self) -> RsResult<StreamProfileList> {
+    pub fn streams(&self) -> Result<StreamProfileList> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_pipeline_profile_get_streams(

@@ -2,7 +2,7 @@
 
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     kind::{Format, StreamKind},
 };
 
@@ -14,7 +14,7 @@ pub struct Config {
 
 impl Config {
     /// Create an instance.
-    pub fn new() -> RsResult<Self> {
+    pub fn new() -> Result<Self> {
         let ptr = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_create_config(checker.inner_mut_ptr());
@@ -36,7 +36,7 @@ impl Config {
         height: usize,
         format: Format,
         framerate: usize,
-    ) -> RsResult<Self> {
+    ) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_config_enable_stream(
@@ -56,7 +56,7 @@ impl Config {
     }
 
     /// Enable device from a serial number.
-    pub fn enable_device_from_serial(self, serial: &CStr) -> RsResult<Self> {
+    pub fn enable_device_from_serial(self, serial: &CStr) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_config_enable_device(
@@ -71,7 +71,7 @@ impl Config {
     }
 
     /// Enable device from a file path.
-    pub fn enable_device_from_file<P>(self, file: &CStr) -> RsResult<Self> {
+    pub fn enable_device_from_file<P>(self, file: &CStr) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_config_enable_device_from_file(

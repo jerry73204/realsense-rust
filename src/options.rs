@@ -1,11 +1,11 @@
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     kind::Rs2Option,
 };
 
 pub trait ToOptions {
-    fn to_options(&self) -> RsResult<HashMap<Rs2Option, OptionHandle>> {
+    fn to_options(&self) -> Result<HashMap<Rs2Option, OptionHandle>> {
         let options_ptr = self.get_options_ptr();
         unsafe {
             let list_ptr = {
@@ -41,9 +41,9 @@ pub trait ToOptions {
                         option,
                     };
 
-                    RsResult::Ok((option, handle))
+                    Result::Ok((option, handle))
                 })
-                .collect::<RsResult<HashMap<_, _>>>()?;
+                .collect::<Result<HashMap<_, _>>>()?;
             Ok(handles)
         }
     }
@@ -58,7 +58,7 @@ pub struct OptionHandle {
 }
 
 impl OptionHandle {
-    pub fn get_value(&self) -> RsResult<f32> {
+    pub fn get_value(&self) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_option(
@@ -71,7 +71,7 @@ impl OptionHandle {
         }
     }
 
-    pub fn set_value(&self, value: f32) -> RsResult<()> {
+    pub fn set_value(&self, value: f32) -> Result<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_set_option(
@@ -85,7 +85,7 @@ impl OptionHandle {
         }
     }
 
-    pub fn is_read_only(&self) -> RsResult<bool> {
+    pub fn is_read_only(&self) -> Result<bool> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_is_option_read_only(
@@ -98,7 +98,7 @@ impl OptionHandle {
         }
     }
 
-    pub fn name<'a>(&'a self) -> RsResult<&'a str> {
+    pub fn name<'a>(&'a self) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_option_name(
@@ -112,7 +112,7 @@ impl OptionHandle {
         }
     }
 
-    pub fn option_description<'a>(&'a self) -> RsResult<&'a str> {
+    pub fn option_description<'a>(&'a self) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_option_description(
@@ -126,7 +126,7 @@ impl OptionHandle {
         }
     }
 
-    pub fn value_description<'a>(&'a self, value: f32) -> RsResult<&'a str> {
+    pub fn value_description<'a>(&'a self, value: f32) -> Result<&'a str> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_option_value_description(

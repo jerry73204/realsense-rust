@@ -2,7 +2,7 @@
 
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     kind::CameraInfo,
     sensor_list::SensorList,
 };
@@ -15,7 +15,7 @@ pub struct Device {
 
 impl Device {
     /// Discover available sensors on device.
-    pub fn query_sensors(&self) -> RsResult<SensorList> {
+    pub fn query_sensors(&self) -> Result<SensorList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_query_sensors(self.ptr.as_ptr(), checker.inner_mut_ptr());
@@ -25,7 +25,7 @@ impl Device {
         Ok(list)
     }
 
-    pub fn hardware_reset(&self) -> RsResult<()> {
+    pub fn hardware_reset(&self) -> Result<()> {
         unsafe {
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_hardware_reset(self.ptr.as_ptr(), checker.inner_mut_ptr());
@@ -34,59 +34,59 @@ impl Device {
         Ok(())
     }
 
-    pub fn name(&self) -> RsResult<Option<&str>> {
+    pub fn name(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::Name)
     }
 
-    pub fn serial_number(&self) -> RsResult<Option<&str>> {
+    pub fn serial_number(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::SerialNumber)
     }
 
-    pub fn recommended_firmware_version(&self) -> RsResult<Option<&str>> {
+    pub fn recommended_firmware_version(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::RecommendedFirmwareVersion)
     }
 
-    pub fn physical_port(&self) -> RsResult<Option<&str>> {
+    pub fn physical_port(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::PhysicalPort)
     }
 
-    pub fn debug_op_code(&self) -> RsResult<Option<&str>> {
+    pub fn debug_op_code(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::DebugOpCode)
     }
 
-    pub fn advanced_mode(&self) -> RsResult<Option<&str>> {
+    pub fn advanced_mode(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::AdvancedMode)
     }
 
-    pub fn product_id(&self) -> RsResult<Option<&str>> {
+    pub fn product_id(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::ProductId)
     }
 
-    pub fn camera_locked(&self) -> RsResult<Option<&str>> {
+    pub fn camera_locked(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::CameraLocked)
     }
 
-    pub fn usb_type_descriptor(&self) -> RsResult<Option<&str>> {
+    pub fn usb_type_descriptor(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::UsbTypeDescriptor)
     }
 
-    pub fn product_line(&self) -> RsResult<Option<&str>> {
+    pub fn product_line(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::ProductLine)
     }
 
-    pub fn asic_serial_number(&self) -> RsResult<Option<&str>> {
+    pub fn asic_serial_number(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::AsicSerialNumber)
     }
 
-    pub fn firmware_update_id(&self) -> RsResult<Option<&str>> {
+    pub fn firmware_update_id(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::FirmwareUpdateId)
     }
 
-    pub fn count(&self) -> RsResult<Option<&str>> {
+    pub fn count(&self) -> Result<Option<&str>> {
         self.info(CameraInfo::Count)
     }
 
-    pub fn info(&self, kind: CameraInfo) -> RsResult<Option<&str>> {
+    pub fn info(&self, kind: CameraInfo) -> Result<Option<&str>> {
         if !self.is_info_supported(kind)? {
             return Ok(None);
         }
@@ -107,7 +107,7 @@ impl Device {
         Ok(Some(string))
     }
 
-    pub fn is_info_supported(&self, kind: CameraInfo) -> RsResult<bool> {
+    pub fn is_info_supported(&self, kind: CameraInfo) -> Result<bool> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_supports_device_info(

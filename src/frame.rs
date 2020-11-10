@@ -5,7 +5,7 @@ use crate::base::Rs2Image;
 use crate::{
     base::{PoseData, Resolution, StreamProfileData},
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     frame_kind,
     kind::{Format, FrameMetaDataValue, StreamKind, TimestampDomain},
     sensor::{AnySensor, DepthSensor},
@@ -18,7 +18,7 @@ where
     Self: Sized,
 {
     /// Obtains the metadata of frame.
-    fn metadata(&self, kind: FrameMetaDataValue) -> RsResult<u64> {
+    fn metadata(&self, kind: FrameMetaDataValue) -> Result<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_metadata(
@@ -32,7 +32,7 @@ where
     }
 
     /// Gets frame number.
-    fn number(&self) -> RsResult<u64> {
+    fn number(&self) -> Result<u64> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val =
@@ -43,7 +43,7 @@ where
     }
 
     /// Gets raw data size in bytes.
-    fn data_size(&self) -> RsResult<usize> {
+    fn data_size(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_data_size(
@@ -56,7 +56,7 @@ where
     }
 
     /// Gets the timestamp.
-    fn timestamp(&self) -> RsResult<f64> {
+    fn timestamp(&self) -> Result<f64> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_timestamp(
@@ -69,7 +69,7 @@ where
     }
 
     /// Gets the domain of timestamp.
-    fn timestamp_domain(&self) -> RsResult<TimestampDomain> {
+    fn timestamp_domain(&self) -> Result<TimestampDomain> {
         let val = unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_timestamp_domain(
@@ -84,7 +84,7 @@ where
     }
 
     /// Gets raw data bytes in frame.
-    fn data(&self) -> RsResult<&[u8]> {
+    fn data(&self) -> Result<&[u8]> {
         let size = self.data_size()?;
         let slice = unsafe {
             let mut checker = ErrorChecker::new();
@@ -97,7 +97,7 @@ where
     }
 
     /// Gets the relating sensor instance.
-    fn sensor(&self) -> RsResult<AnySensor> {
+    fn sensor(&self) -> Result<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr =
@@ -109,7 +109,7 @@ where
     }
 
     /// Gets the relating stream profile.
-    fn stream_profile(&self) -> RsResult<AnyStreamProfile> {
+    fn stream_profile(&self) -> Result<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_frame_stream_profile(
@@ -122,7 +122,7 @@ where
         Ok(profile)
     }
 
-    fn try_clone(&self) -> RsResult<Self> {
+    fn try_clone(&self) -> Result<Self> {
         unsafe {
             // add reference
             let mut checker = ErrorChecker::new();
@@ -153,7 +153,7 @@ where
     Self: GenericFrameEx,
 {
     /// Gets image resolution.
-    fn resolution(&self) -> RsResult<Resolution> {
+    fn resolution(&self) -> Result<Resolution> {
         let width = self.width()?;
         let height = self.height()?;
         let resolution = Resolution { width, height };
@@ -161,7 +161,7 @@ where
     }
 
     /// Gets image width in pixels.
-    fn width(&self) -> RsResult<usize> {
+    fn width(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val =
@@ -172,7 +172,7 @@ where
     }
 
     /// Gets image height in pixels.
-    fn height(&self) -> RsResult<usize> {
+    fn height(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val =
@@ -183,7 +183,7 @@ where
     }
 
     /// Gets image row stride in bytes.
-    fn stride_in_bytes(&self) -> RsResult<usize> {
+    fn stride_in_bytes(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_stride_in_bytes(
@@ -196,7 +196,7 @@ where
     }
 
     /// Gets the size of pixel in bits.
-    fn bits_per_pixel(&self) -> RsResult<usize> {
+    fn bits_per_pixel(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_bits_per_pixel(
@@ -210,7 +210,7 @@ where
 
     /// Gets color image buffer referencing underlying raw data.
     #[cfg(feature = "with-image")]
-    fn image(&self) -> RsResult<Rs2Image> {
+    fn image(&self) -> Result<Rs2Image> {
         let StreamProfileData { format, .. } = self.stream_profile()?.get_data()?;
         let raw_data = self.data()?;
         let Resolution { width, height } = self.resolution()?;
@@ -379,7 +379,7 @@ where
     Self: VideoFrameEx,
 {
     /// Gets distance at given coordinates.
-    fn distance(&self, x: usize, y: usize) -> RsResult<f32> {
+    fn distance(&self, x: usize, y: usize) -> Result<f32> {
         let distance = unsafe {
             let mut checker = ErrorChecker::new();
             let distance = realsense_sys::rs2_depth_frame_get_distance(
@@ -395,7 +395,7 @@ where
     }
 
     /// Gets the length in meter per distance unit.
-    fn depth_units(&self) -> RsResult<f32> {
+    fn depth_units(&self) -> Result<f32> {
         let sensor = self.sensor()?;
         let sensor: DepthSensor = sensor.try_extend_to()?.unwrap();
         let depth_units = sensor.depth_units()?;
@@ -411,7 +411,7 @@ where
     Self: DepthFrameEx,
 {
     /// Retrieves the distance between the two IR sensors.
-    fn baseline(&self) -> RsResult<f32> {
+    fn baseline(&self) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let baseline = realsense_sys::rs2_depth_stereo_frame_get_baseline(
@@ -496,7 +496,7 @@ impl DisparityFrameEx for DisparityFrame {}
 impl<Kind> Frame<Kind> where Kind: frame_kind::FrameKind {}
 
 impl AnyFrame {
-    pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
+    pub fn is_extendable_to<Kind>(&self) -> Result<bool>
     where
         Kind: frame_kind::NonAnyFrameKind,
     {
@@ -512,7 +512,7 @@ impl AnyFrame {
         }
     }
 
-    pub fn try_extend_to<Kind>(self) -> RsResult<Result<Frame<Kind>, Self>>
+    pub fn try_extend_to<Kind>(self) -> Result<std::result::Result<Frame<Kind>, Self>>
     where
         Kind: frame_kind::NonAnyFrameKind,
     {
@@ -531,7 +531,7 @@ impl AnyFrame {
         }
     }
 
-    pub fn try_extend(self) -> RsResult<ExtendedFrame> {
+    pub fn try_extend(self) -> Result<ExtendedFrame> {
         let frame_any = self;
 
         let frame_any = match frame_any.try_extend_to::<frame_kind::Points>()? {
@@ -575,7 +575,7 @@ impl AnyFrame {
 
 impl CompositeFrame {
     /// Gets the number of frames included in the composite frame.
-    pub fn len(&self) -> RsResult<usize> {
+    pub fn len(&self) -> Result<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
             let len = realsense_sys::rs2_embedded_frames_count(
@@ -589,14 +589,14 @@ impl CompositeFrame {
     }
 
     /// Checks if the composite-frame contains no sub-frames.
-    pub fn is_empty(&self) -> RsResult<bool> {
+    pub fn is_empty(&self) -> Result<bool> {
         Ok(self.len()? == 0)
     }
 
     /// Gets the frame in frameset by index.
     ///
     /// The method throws error if index is out of bound given by [Frame::len].
-    pub fn get(&self, index: usize) -> RsResult<Option<AnyFrame>> {
+    pub fn get(&self, index: usize) -> Result<Option<AnyFrame>> {
         let len = self.len()?;
         if index >= len {
             return Ok(None);
@@ -618,7 +618,7 @@ impl CompositeFrame {
     }
 
     /// Unpacks the set of frames and turns into iterable [CompositeFrameIntoIter] instance.
-    pub fn try_into_iter(self) -> RsResult<CompositeFrameIntoIter> {
+    pub fn try_into_iter(self) -> Result<CompositeFrameIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
         let iter = CompositeFrameIntoIter {
@@ -630,7 +630,7 @@ impl CompositeFrame {
         Ok(iter)
     }
 
-    pub fn try_iter(&self) -> RsResult<CompositeFrameIter> {
+    pub fn try_iter(&self) -> Result<CompositeFrameIter> {
         let len = self.len()?;
         let iter = CompositeFrameIter {
             index: 0,
@@ -641,7 +641,7 @@ impl CompositeFrame {
         Ok(iter)
     }
 
-    pub fn first_of<Kind>(&self, stream: StreamKind) -> RsResult<Option<Frame<Kind>>>
+    pub fn first_of<Kind>(&self, stream: StreamKind) -> Result<Option<Frame<Kind>>>
     where
         Kind: frame_kind::NonAnyFrameKind,
     {
@@ -656,22 +656,22 @@ impl CompositeFrame {
         Ok(None)
     }
 
-    pub fn color_frame(&self) -> RsResult<Option<VideoFrame>> {
+    pub fn color_frame(&self) -> Result<Option<VideoFrame>> {
         self.first_of::<frame_kind::Video>(StreamKind::Color)
     }
 
-    pub fn depth_frame(&self) -> RsResult<Option<DepthFrame>> {
+    pub fn depth_frame(&self) -> Result<Option<DepthFrame>> {
         self.first_of::<frame_kind::Depth>(StreamKind::Depth)
     }
 
-    pub fn pose_frame(&self) -> RsResult<Option<PoseFrame>> {
+    pub fn pose_frame(&self) -> Result<Option<PoseFrame>> {
         self.first_of::<frame_kind::Pose>(StreamKind::Pose)
     }
 }
 
 impl PoseFrame {
     /// Gets the pose data.
-    pub fn pose(&self) -> RsResult<PoseData> {
+    pub fn pose(&self) -> Result<PoseData> {
         let pose_data = unsafe {
             let mut checker = ErrorChecker::new();
             let mut pose_data = MaybeUninit::uninit();
@@ -703,7 +703,7 @@ unsafe impl safe_transmute::TriviallyTransmutable for TextureCoordinate {}
 
 impl PointsFrame {
     /// Gets vertices of point cloud.
-    pub fn vertices<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_vertex]> {
+    pub fn vertices<'a>(&'a self) -> Result<&'a [realsense_sys::rs2_vertex]> {
         let n_points = self.points_count()?;
         unsafe {
             let mut checker = ErrorChecker::new();
@@ -716,7 +716,7 @@ impl PointsFrame {
     }
 
     /// Gets texture coordinates of each point of point cloud.
-    pub fn texture_coordinates<'a>(&'a self) -> RsResult<&'a [TextureCoordinate]> {
+    pub fn texture_coordinates<'a>(&'a self) -> Result<&'a [TextureCoordinate]> {
         unsafe {
             let n_points = self.points_count()?;
             let mut checker = ErrorChecker::new();
@@ -744,7 +744,7 @@ impl PointsFrame {
     }
 
     /// Gets number of points in frame.
-    pub fn points_count(&self) -> RsResult<usize> {
+    pub fn points_count(&self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = realsense_sys::rs2_get_frame_points_count(
@@ -759,7 +759,7 @@ impl PointsFrame {
 
 impl MotionFrame {
     /// Gets motion data.
-    pub fn motion(&self) -> RsResult<[f32; 3]> {
+    pub fn motion(&self) -> Result<[f32; 3]> {
         let slice = safe_transmute::transmute_many::<f32, PedanticGuard>(self.data()?).unwrap();
         match *slice {
             [x, y, z] => Ok([x, y, z]),
@@ -769,13 +769,13 @@ impl MotionFrame {
 }
 
 impl IntoIterator for CompositeFrame {
-    type Item = RsResult<AnyFrame>;
+    type Item = Result<AnyFrame>;
     type IntoIter = CompositeFrameIntoIter;
 
     /// The method internally calls [Frame::try_into_iter](Frame::try_into_iter).
     ///
     /// # Panics
-    /// This method panics if [Frame::try_into_iter](Frame::try_into_iter) returns [Err](Result::Err).
+    /// This method panics if [Frame::try_into_iter](Frame::try_into_iter) returns error.
     ///
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
@@ -815,7 +815,7 @@ pub struct CompositeFrameIntoIter {
 }
 
 impl Iterator for CompositeFrameIntoIter {
-    type Item = RsResult<AnyFrame>;
+    type Item = Result<AnyFrame>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {
@@ -867,7 +867,7 @@ pub struct CompositeFrameIter {
 }
 
 impl Iterator for CompositeFrameIter {
-    type Item = RsResult<AnyFrame>;
+    type Item = Result<AnyFrame>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {

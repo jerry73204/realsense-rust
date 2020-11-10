@@ -2,7 +2,7 @@
 
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     sensor::{AnySensor, Sensor},
 };
 
@@ -16,7 +16,7 @@ impl SensorList {
     /// Gets the sensor instance at given index.
     ///
     /// It returns error if index is out of bound given by [SensorList::len].
-    pub fn get(&mut self, index: usize) -> RsResult<AnySensor> {
+    pub fn get(&mut self, index: usize) -> Result<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_create_sensor(
@@ -31,7 +31,7 @@ impl SensorList {
     }
 
     /// Gets the number of sensors in list.
-    pub fn len(&mut self) -> RsResult<usize> {
+    pub fn len(&mut self) -> Result<usize> {
         let len = unsafe {
             let mut checker = ErrorChecker::new();
             let len =
@@ -43,12 +43,12 @@ impl SensorList {
     }
 
     /// Checks if the list is empty.
-    pub fn is_empty(&mut self) -> RsResult<bool> {
+    pub fn is_empty(&mut self) -> Result<bool> {
         Ok(self.len()? == 0)
     }
 
     /// Turns into [SensorListIntoIter] iterable type.
-    pub fn try_into_iter(mut self) -> RsResult<SensorListIntoIter> {
+    pub fn try_into_iter(mut self) -> Result<SensorListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
         let iter = SensorListIntoIter {
@@ -72,13 +72,13 @@ impl SensorList {
 }
 
 impl IntoIterator for SensorList {
-    type Item = RsResult<AnySensor>;
+    type Item = Result<AnySensor>;
     type IntoIter = SensorListIntoIter;
 
     /// The method internally calls [SensorList::try_into_iter](SensorList::try_into_iter).
     ///
     /// # Panics
-    /// It panics if [SensorList::try_into_iter](SensorList::try_into_iter) returns [Err](Result::Err).
+    /// It panics if [SensorList::try_into_iter](SensorList::try_into_iter) returns error.
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
@@ -94,7 +94,7 @@ pub struct SensorListIntoIter {
 }
 
 impl Iterator for SensorListIntoIter {
-    type Item = RsResult<AnySensor>;
+    type Item = Result<AnySensor>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {

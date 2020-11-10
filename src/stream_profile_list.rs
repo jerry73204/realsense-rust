@@ -2,7 +2,7 @@
 
 use crate::{
     common::*,
-    error::{ErrorChecker, Result as RsResult},
+    error::{ErrorChecker, Result},
     stream_profile::AnyStreamProfile,
 };
 
@@ -16,7 +16,7 @@ impl StreamProfileList {
     /// Gets the stream profile at given index.
     ///
     /// The method returns error if the index is out of bound given by [StreamProfileList::len].
-    pub fn get(&mut self, index: usize) -> RsResult<AnyStreamProfile> {
+    pub fn get(&mut self, index: usize) -> Result<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_stream_profile(
@@ -31,7 +31,7 @@ impl StreamProfileList {
     }
 
     /// Gets the length of list.
-    pub fn len(&mut self) -> RsResult<usize> {
+    pub fn len(&mut self) -> Result<usize> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let len = realsense_sys::rs2_get_stream_profiles_count(
@@ -44,12 +44,12 @@ impl StreamProfileList {
     }
 
     /// Checks if the profile list is empty.
-    pub fn is_empty(&mut self) -> RsResult<bool> {
+    pub fn is_empty(&mut self) -> Result<bool> {
         Ok(self.len()? == 0)
     }
 
     /// Turns into iterable [StreamProfileListIntoIter] instance.
-    pub fn try_into_iter(mut self) -> RsResult<StreamProfileListIntoIter> {
+    pub fn try_into_iter(mut self) -> Result<StreamProfileListIntoIter> {
         let len = self.len()?;
         let ptr = unsafe { self.take() };
         let iter = StreamProfileListIntoIter {
@@ -73,7 +73,7 @@ impl StreamProfileList {
 }
 
 impl IntoIterator for StreamProfileList {
-    type Item = RsResult<AnyStreamProfile>;
+    type Item = Result<AnyStreamProfile>;
     type IntoIter = StreamProfileListIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -98,7 +98,7 @@ pub struct StreamProfileListIntoIter {
 }
 
 impl Iterator for StreamProfileListIntoIter {
-    type Item = RsResult<AnyStreamProfile>;
+    type Item = Result<AnyStreamProfile>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {
