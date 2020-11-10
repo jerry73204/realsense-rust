@@ -3,7 +3,7 @@
 use crate::{
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    stream_profile::{marker as stream_marker, StreamProfile},
+    stream_profile::AnyStreamProfile,
 };
 
 /// An iterable list of streams.
@@ -16,7 +16,7 @@ impl StreamProfileList {
     /// Gets the stream profile at given index.
     ///
     /// The method returns error if the index is out of bound given by [StreamProfileList::len].
-    pub fn get(&mut self, index: usize) -> RsResult<StreamProfile<stream_marker::Any>> {
+    pub fn get(&mut self, index: usize) -> RsResult<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_stream_profile(
@@ -25,7 +25,7 @@ impl StreamProfileList {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            StreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false)
+            AnyStreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false)
         };
         Ok(profile)
     }
@@ -73,7 +73,7 @@ impl StreamProfileList {
 }
 
 impl IntoIterator for StreamProfileList {
-    type Item = RsResult<StreamProfile<stream_marker::Any>>;
+    type Item = RsResult<AnyStreamProfile>;
     type IntoIter = StreamProfileListIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -98,7 +98,7 @@ pub struct StreamProfileListIntoIter {
 }
 
 impl Iterator for StreamProfileListIntoIter {
-    type Item = RsResult<StreamProfile<stream_marker::Any>>;
+    type Item = RsResult<AnyStreamProfile>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {
@@ -128,7 +128,7 @@ impl Iterator for StreamProfileListIntoIter {
         }
 
         let profile =
-            unsafe { StreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false) };
+            unsafe { AnyStreamProfile::from_parts(NonNull::new(ptr as *mut _).unwrap(), false) };
         Some(Ok(profile))
     }
 }

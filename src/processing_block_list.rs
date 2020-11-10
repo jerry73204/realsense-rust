@@ -3,18 +3,18 @@
 use crate::{
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    processing_block::{marker as processing_block_marker, ProcessingBlock},
+    processing_block::AnyProcessingBlock,
 };
 
-/// The iterable list of [ProcessingBlock](ProcessingBlock)s.
+/// The iterable list of [AnyProcessingBlock](AnyProcessingBlock)s.
 #[derive(Debug)]
 pub struct ProcessingBlockList {
     ptr: NonNull<realsense_sys::rs2_processing_block_list>,
 }
 
 impl ProcessingBlockList {
-    /// Retrieves the [ProcessingBlock](ProcessingBlock) instance at index.
-    pub fn get(&mut self, index: usize) -> RsResult<ProcessingBlock<processing_block_marker::Any>> {
+    /// Retrieves the [AnyProcessingBlock](AnyProcessingBlock) instance at index.
+    pub fn get(&mut self, index: usize) -> RsResult<AnyProcessingBlock> {
         let block = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_processing_block(
@@ -23,7 +23,7 @@ impl ProcessingBlockList {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap())?
+            AnyProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap())?
         };
         Ok(block)
     }
@@ -66,7 +66,7 @@ impl ProcessingBlockList {
 }
 
 impl IntoIterator for ProcessingBlockList {
-    type Item = RsResult<ProcessingBlock<processing_block_marker::Any>>;
+    type Item = RsResult<AnyProcessingBlock>;
     type IntoIter = ProcessingBlockListIntoIter;
 
     /// The method calls [ProcessingBlockList::try_into_iter](ProcessingBlockList::try_into_iter).
@@ -94,7 +94,7 @@ pub struct ProcessingBlockListIntoIter {
 }
 
 impl Iterator for ProcessingBlockListIntoIter {
-    type Item = RsResult<ProcessingBlock<processing_block_marker::Any>>;
+    type Item = RsResult<AnyProcessingBlock>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
@@ -106,7 +106,7 @@ impl Iterator for ProcessingBlockListIntoIter {
                     checker.inner_mut_ptr(),
                 );
                 match checker.check() {
-                    Ok(()) => ProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap()),
+                    Ok(()) => AnyProcessingBlock::new_from_ptr(NonNull::new(ptr).unwrap()),
                     Err(err) => return Some(Err(err)),
                 }
             };

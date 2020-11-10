@@ -6,7 +6,7 @@ use crate::{
     config::Config,
     context::Context,
     error::{Error as RsError, ErrorChecker, Result as RsResult},
-    frame::{marker::Composite, Frame, GenericFrame},
+    frame::{CompositeFrame, Frame, GenericFrameEx},
     pipeline_profile::PipelineProfile,
 };
 
@@ -61,7 +61,12 @@ where
     state: State,
 }
 
-impl Pipeline<marker::Inactive> {
+// type aliases
+
+pub type InactivePipeline = Pipeline<marker::Inactive>;
+pub type ActivePipeline = Pipeline<marker::Active>;
+
+impl InactivePipeline {
     /// Creates an instance.
     pub fn new() -> RsResult<Self> {
         let context = Context::new()?;
@@ -91,7 +96,7 @@ impl Pipeline<marker::Inactive> {
     /// Start the pipeline with optional config.
     ///
     /// The method consumes inactive pipeline itself, and returns the started pipeine.
-    pub fn start(self, config: Option<Config>) -> RsResult<Pipeline<marker::Active>> {
+    pub fn start(self, config: Option<Config>) -> RsResult<ActivePipeline> {
         let ptr = match &config {
             Some(conf) => unsafe {
                 let mut checker = ErrorChecker::new();
@@ -126,7 +131,7 @@ impl Pipeline<marker::Inactive> {
     }
 
     /// Start the pipeline asynchronously. It is analogous to [Pipeline::start].
-    pub async fn start_async(self, config: Option<Config>) -> RsResult<Pipeline<marker::Active>> {
+    pub async fn start_async(self, config: Option<Config>) -> RsResult<ActivePipeline> {
         let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
         let config_ptr_opt = config
             .as_ref()
@@ -180,14 +185,14 @@ impl Pipeline<marker::Inactive> {
     }
 }
 
-impl Pipeline<marker::Active> {
+impl ActivePipeline {
     /// Gets the profile of pipeline.
     pub fn profile(&self) -> &PipelineProfile {
         &self.state.profile
     }
 
     /// Block and wait for next frame.
-    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
+    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<CompositeFrame> {
         let timeout_ms = timeout.unwrap_or(DEFAULT_TIMEOUT).as_millis() as c_uint;
 
         let frame = loop {
@@ -219,7 +224,7 @@ impl Pipeline<marker::Active> {
     ///
     /// Unlike [Pipeline::start], the method does not block and returns None
     /// if next from is not available.
-    pub fn try_wait(&mut self) -> RsResult<Option<Frame<Composite>>> {
+    pub fn try_wait(&mut self) -> RsResult<Option<CompositeFrame>> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut ptr: *mut realsense_sys::rs2_frame = std::ptr::null_mut();
@@ -243,7 +248,7 @@ impl Pipeline<marker::Active> {
     }
 
     /// Wait for frame asynchronously. It is analogous to [Pipeline::wait]
-    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Composite>> {
+    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<CompositeFrame> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
             .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
@@ -276,7 +281,7 @@ impl Pipeline<marker::Active> {
     /// Stop the pipeline.
     ///
     /// This method consumes the pipeline instance and returns pipeline markered inactive.
-    pub fn stop(self) -> RsResult<Pipeline<marker::Inactive>> {
+    pub fn stop(self) -> RsResult<InactivePipeline> {
         unsafe {
             let mut checker = ErrorChecker::new();
             realsense_sys::rs2_pipeline_stop(self.ptr.as_ptr(), checker.inner_mut_ptr());

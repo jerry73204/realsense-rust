@@ -4,7 +4,10 @@ use crate::{
     base::StreamProfileData,
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    frame::{marker as frame_marker, ExtendedFrame, Frame, GenericFrame},
+    frame::{
+        marker as frame_marker, AnyFrame, DepthFrame, ExtendedFrame, Frame, GenericFrameEx,
+        PointsFrame, VideoFrame,
+    },
     frame_queue::FrameQueue,
     kind::{ColorScheme, Extension, HoleFillingMode, PersistenceControl, Rs2Option, StreamKind},
     options::ToOptions,
@@ -26,85 +29,85 @@ pub mod marker {
     impl ProcessingBlockKind for Any {}
 
     #[derive(Debug)]
-    pub struct DecimationFilter;
-    impl ProcessingBlockKind for DecimationFilter {}
-    impl ExtendableProcessingBlockKind for DecimationFilter {
+    pub struct DecimationFilterKind;
+    impl ProcessingBlockKind for DecimationFilterKind {}
+    impl ExtendableProcessingBlockKind for DecimationFilterKind {
         const EXTENSION: Extension = Extension::DecimationFilter;
     }
 
     #[derive(Debug)]
-    pub struct ThresholdFilter;
-    impl ProcessingBlockKind for ThresholdFilter {}
-    impl ExtendableProcessingBlockKind for ThresholdFilter {
+    pub struct ThresholdFilterKind;
+    impl ProcessingBlockKind for ThresholdFilterKind {}
+    impl ExtendableProcessingBlockKind for ThresholdFilterKind {
         const EXTENSION: Extension = Extension::ThresholdFilter;
     }
 
     #[derive(Debug)]
-    pub struct DisparityFilter;
-    impl ProcessingBlockKind for DisparityFilter {}
-    impl ExtendableProcessingBlockKind for DisparityFilter {
+    pub struct DisparityFilterKind;
+    impl ProcessingBlockKind for DisparityFilterKind {}
+    impl ExtendableProcessingBlockKind for DisparityFilterKind {
         const EXTENSION: Extension = Extension::DisparityFilter;
     }
 
     #[derive(Debug)]
-    pub struct SpatialFilter;
-    impl ProcessingBlockKind for SpatialFilter {}
-    impl ExtendableProcessingBlockKind for SpatialFilter {
+    pub struct SpatialFilterKind;
+    impl ProcessingBlockKind for SpatialFilterKind {}
+    impl ExtendableProcessingBlockKind for SpatialFilterKind {
         const EXTENSION: Extension = Extension::SpatialFilter;
     }
 
     #[derive(Debug)]
-    pub struct TemporalFilter;
-    impl ProcessingBlockKind for TemporalFilter {}
-    impl ExtendableProcessingBlockKind for TemporalFilter {
+    pub struct TemporalFilterKind;
+    impl ProcessingBlockKind for TemporalFilterKind {}
+    impl ExtendableProcessingBlockKind for TemporalFilterKind {
         const EXTENSION: Extension = Extension::TemporalFilter;
     }
 
     #[derive(Debug)]
-    pub struct HoleFillingFilter;
-    impl ProcessingBlockKind for HoleFillingFilter {}
-    impl ExtendableProcessingBlockKind for HoleFillingFilter {
+    pub struct HoleFillingFilterKind;
+    impl ProcessingBlockKind for HoleFillingFilterKind {}
+    impl ExtendableProcessingBlockKind for HoleFillingFilterKind {
         const EXTENSION: Extension = Extension::HoleFillingFilter;
     }
 
     #[derive(Debug)]
-    pub struct ZeroOrderFilter;
-    impl ProcessingBlockKind for ZeroOrderFilter {}
-    impl ExtendableProcessingBlockKind for ZeroOrderFilter {
+    pub struct ZeroOrderFilterKind;
+    impl ProcessingBlockKind for ZeroOrderFilterKind {}
+    impl ExtendableProcessingBlockKind for ZeroOrderFilterKind {
         const EXTENSION: Extension = Extension::ZeroOrderFilter;
     }
 
     #[derive(Debug)]
-    pub struct PointCloud;
-    impl ProcessingBlockKind for PointCloud {}
+    pub struct PointCloudKind;
+    impl ProcessingBlockKind for PointCloudKind {}
 
     #[derive(Debug)]
-    pub struct YuyDecoder;
-    impl ProcessingBlockKind for YuyDecoder {}
+    pub struct YuyDecoderKind;
+    impl ProcessingBlockKind for YuyDecoderKind {}
 
     #[derive(Debug)]
-    pub struct UnitsTransform;
-    impl ProcessingBlockKind for UnitsTransform {}
+    pub struct UnitsTransformKind;
+    impl ProcessingBlockKind for UnitsTransformKind {}
 
     #[derive(Debug)]
-    pub struct Syncer;
-    impl ProcessingBlockKind for Syncer {}
+    pub struct SyncerKind;
+    impl ProcessingBlockKind for SyncerKind {}
 
     #[derive(Debug)]
-    pub struct Align;
-    impl ProcessingBlockKind for Align {}
+    pub struct AlignKind;
+    impl ProcessingBlockKind for AlignKind {}
 
     #[derive(Debug)]
-    pub struct Colorizer;
-    impl ProcessingBlockKind for Colorizer {}
+    pub struct ColorizerKind;
+    impl ProcessingBlockKind for ColorizerKind {}
 
     #[derive(Debug)]
-    pub struct HuffmanDepthDecompress;
-    impl ProcessingBlockKind for HuffmanDepthDecompress {}
+    pub struct HuffmanDepthDecompressKind;
+    impl ProcessingBlockKind for HuffmanDepthDecompressKind {}
 
     #[derive(Debug)]
-    pub struct RatesPrinter;
-    impl ProcessingBlockKind for RatesPrinter {}
+    pub struct RatesPrinterKind;
+    impl ProcessingBlockKind for RatesPrinterKind {}
 }
 
 /// The type returned by [ProcessingBlock::<Any>::try_extend](ProcessingBlock::try_extend).
@@ -113,14 +116,14 @@ pub mod marker {
 /// extend any one of the kind, it falls back to [ExtendedProcessingBlock::Other](ExtendedProcessingBlock::Other) variant.
 #[derive(Debug)]
 pub enum ExtendedProcessingBlock {
-    DecimationFilter(ProcessingBlock<marker::DecimationFilter>),
-    ThresholdFilter(ProcessingBlock<marker::ThresholdFilter>),
-    DisparityFilter(ProcessingBlock<marker::DisparityFilter>),
-    SpatialFilter(ProcessingBlock<marker::SpatialFilter>),
-    TemporalFilter(ProcessingBlock<marker::TemporalFilter>),
-    HoleFillingFilter(ProcessingBlock<marker::HoleFillingFilter>),
-    ZeroOrderFilter(ProcessingBlock<marker::ZeroOrderFilter>),
-    Other(ProcessingBlock<marker::Any>),
+    DecimationFilter(DecimationFilter),
+    ThresholdFilter(ThresholdFilter),
+    DisparityFilter(DisparityFilter),
+    SpatialFilter(SpatialFilter),
+    TemporalFilter(TemporalFilter),
+    HoleFillingFilter(HoleFillingFilter),
+    ZeroOrderFilter(ZeroOrderFilter),
+    Other(AnyProcessingBlock),
 }
 
 /// The type of data processing unit.
@@ -134,11 +137,30 @@ where
     _phantom: PhantomData<Kind>,
 }
 
+// type aliases
+
+pub type DecimationFilter = ProcessingBlock<marker::DecimationFilterKind>;
+pub type ThresholdFilter = ProcessingBlock<marker::ThresholdFilterKind>;
+pub type DisparityFilter = ProcessingBlock<marker::DisparityFilterKind>;
+pub type SpatialFilter = ProcessingBlock<marker::SpatialFilterKind>;
+pub type TemporalFilter = ProcessingBlock<marker::TemporalFilterKind>;
+pub type HoleFillingFilter = ProcessingBlock<marker::HoleFillingFilterKind>;
+pub type ZeroOrderFilter = ProcessingBlock<marker::ZeroOrderFilterKind>;
+pub type PointCloud = ProcessingBlock<marker::PointCloudKind>;
+pub type YuyDecoder = ProcessingBlock<marker::YuyDecoderKind>;
+pub type UnitsTransform = ProcessingBlock<marker::UnitsTransformKind>;
+pub type Syncer = ProcessingBlock<marker::SyncerKind>;
+pub type Align = ProcessingBlock<marker::AlignKind>;
+pub type Colorizer = ProcessingBlock<marker::ColorizerKind>;
+pub type HuffmanDepthDecompress = ProcessingBlock<marker::HuffmanDepthDecompressKind>;
+pub type RatesPrinter = ProcessingBlock<marker::RatesPrinterKind>;
+pub type AnyProcessingBlock = ProcessingBlock<marker::Any>;
+
 impl<Kind> ProcessingBlock<Kind>
 where
     Kind: marker::ProcessingBlockKind,
 {
-    pub fn process<K>(&mut self, input: Frame<K>) -> RsResult<Frame<frame_marker::Any>>
+    pub fn process<K>(&mut self, input: Frame<K>) -> RsResult<AnyFrame>
     where
         K: frame_marker::FrameKind,
     {
@@ -156,7 +178,7 @@ where
         Ok(output)
     }
 
-    pub async fn process_async<K>(&mut self, input: Frame<K>) -> RsResult<Frame<frame_marker::Any>>
+    pub async fn process_async<K>(&mut self, input: Frame<K>) -> RsResult<AnyFrame>
     where
         K: frame_marker::FrameKind,
     {
@@ -224,7 +246,7 @@ where
     }
 }
 
-impl ProcessingBlock<marker::Any> {
+impl AnyProcessingBlock {
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
         Kind: marker::ExtendableProcessingBlockKind,
@@ -260,37 +282,37 @@ impl ProcessingBlock<marker::Any> {
     pub fn try_extend(self) -> RsResult<ExtendedProcessingBlock> {
         let frame_any = self;
 
-        let frame_any = match frame_any.try_extend_to::<marker::DecimationFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::DecimationFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::DecimationFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::ThresholdFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::ThresholdFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::ThresholdFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::DisparityFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::DisparityFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::DisparityFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::SpatialFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::SpatialFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::SpatialFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::TemporalFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::TemporalFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::TemporalFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::HoleFillingFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::HoleFillingFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::HoleFillingFilter(frame)),
             Err(frame) => frame,
         };
 
-        let frame_any = match frame_any.try_extend_to::<marker::ZeroOrderFilter>()? {
+        let frame_any = match frame_any.try_extend_to::<marker::ZeroOrderFilterKind>()? {
             Ok(frame) => return Ok(ExtendedProcessingBlock::ZeroOrderFilter(frame)),
             Err(frame) => frame,
         };
@@ -299,7 +321,7 @@ impl ProcessingBlock<marker::Any> {
     }
 }
 
-impl ProcessingBlock<marker::ThresholdFilter> {
+impl ThresholdFilter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -330,7 +352,7 @@ impl ProcessingBlock<marker::ThresholdFilter> {
     }
 }
 
-impl ProcessingBlock<marker::SpatialFilter> {
+impl SpatialFilter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -364,7 +386,7 @@ impl ProcessingBlock<marker::SpatialFilter> {
     }
 }
 
-impl ProcessingBlock<marker::TemporalFilter> {
+impl TemporalFilter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -396,7 +418,7 @@ impl ProcessingBlock<marker::TemporalFilter> {
     }
 }
 
-impl ProcessingBlock<marker::DecimationFilter> {
+impl DecimationFilter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -422,7 +444,7 @@ impl ProcessingBlock<marker::DecimationFilter> {
     }
 }
 
-impl ProcessingBlock<marker::HoleFillingFilter> {
+impl HoleFillingFilter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -443,7 +465,7 @@ impl ProcessingBlock<marker::HoleFillingFilter> {
     }
 }
 
-impl ProcessingBlock<marker::DisparityFilter> {
+impl DisparityFilter {
     pub fn create() -> RsResult<Self> {
         Self::with_options(true)
     }
@@ -462,7 +484,7 @@ impl ProcessingBlock<marker::DisparityFilter> {
     }
 }
 
-impl ProcessingBlock<marker::PointCloud> {
+impl PointCloud {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -473,10 +495,7 @@ impl ProcessingBlock<marker::PointCloud> {
         Ok(processing_block)
     }
 
-    pub fn calculate(
-        &mut self,
-        depth_frame: Frame<frame_marker::Depth>,
-    ) -> RsResult<Frame<frame_marker::Points>> {
+    pub fn calculate(&mut self, depth_frame: DepthFrame) -> RsResult<PointsFrame> {
         let frame_any = self.process(depth_frame)?;
         match frame_any.try_extend()? {
             ExtendedFrame::Points(points_frame) => Ok(points_frame),
@@ -493,7 +512,7 @@ impl ProcessingBlock<marker::PointCloud> {
         }
     }
 
-    pub fn map_to(&mut self, color_frame: Frame<frame_marker::Video>) -> RsResult<()> {
+    pub fn map_to(&mut self, color_frame: VideoFrame) -> RsResult<()> {
         let StreamProfileData {
             stream,
             format,
@@ -510,10 +529,7 @@ impl ProcessingBlock<marker::PointCloud> {
         Ok(())
     }
 
-    pub async fn calculate_async(
-        &mut self,
-        depth_frame: Frame<frame_marker::Depth>,
-    ) -> RsResult<Frame<frame_marker::Points>> {
+    pub async fn calculate_async(&mut self, depth_frame: DepthFrame) -> RsResult<PointsFrame> {
         let frame_any = self.process_async(depth_frame).await?;
         match frame_any.try_extend()? {
             ExtendedFrame::Points(points_frame) => Ok(points_frame),
@@ -530,7 +546,7 @@ impl ProcessingBlock<marker::PointCloud> {
         }
     }
 
-    pub async fn map_to_async(&mut self, color_frame: Frame<frame_marker::Video>) -> RsResult<()> {
+    pub async fn map_to_async(&mut self, color_frame: VideoFrame) -> RsResult<()> {
         let StreamProfileData {
             stream,
             format,
@@ -548,7 +564,7 @@ impl ProcessingBlock<marker::PointCloud> {
     }
 }
 
-impl ProcessingBlock<marker::YuyDecoder> {
+impl YuyDecoder {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -560,7 +576,7 @@ impl ProcessingBlock<marker::YuyDecoder> {
     }
 }
 
-impl ProcessingBlock<marker::UnitsTransform> {
+impl UnitsTransform {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -572,7 +588,7 @@ impl ProcessingBlock<marker::UnitsTransform> {
     }
 }
 
-impl ProcessingBlock<marker::Syncer> {
+impl Syncer {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -584,7 +600,7 @@ impl ProcessingBlock<marker::Syncer> {
     }
 }
 
-impl ProcessingBlock<marker::Align> {
+impl Align {
     pub fn create(align_to: StreamKind) -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -599,7 +615,7 @@ impl ProcessingBlock<marker::Align> {
     }
 }
 
-impl ProcessingBlock<marker::Colorizer> {
+impl Colorizer {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -624,17 +640,14 @@ impl ProcessingBlock<marker::Colorizer> {
         Ok(processing_block)
     }
 
-    pub fn colorize(
-        &mut self,
-        depth_frame: Frame<frame_marker::Depth>,
-    ) -> RsResult<Frame<frame_marker::Video>> {
+    pub fn colorize(&mut self, depth_frame: DepthFrame) -> RsResult<VideoFrame> {
         let frame_any = self.process(depth_frame)?;
         let color_frame = frame_any.try_extend_to::<frame_marker::Video>()?.unwrap();
         Ok(color_frame)
     }
 }
 
-impl ProcessingBlock<marker::HuffmanDepthDecompress> {
+impl HuffmanDepthDecompress {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
@@ -647,7 +660,7 @@ impl ProcessingBlock<marker::HuffmanDepthDecompress> {
     }
 }
 
-impl ProcessingBlock<marker::RatesPrinter> {
+impl RatesPrinter {
     pub fn create() -> RsResult<Self> {
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();

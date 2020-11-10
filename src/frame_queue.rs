@@ -4,10 +4,7 @@ use crate::{
     base::DEFAULT_TIMEOUT,
     common::*,
     error::{Error as RsError, ErrorChecker, Result as RsResult},
-    frame::{
-        marker::{Any, FrameKind},
-        Frame, GenericFrame,
-    },
+    frame::{marker as frame_marker, AnyFrame, Frame, GenericFrameEx},
 };
 
 /// The queue of frames.
@@ -32,7 +29,7 @@ impl FrameQueue {
     /// Push a frame to the queue.
     pub fn enqueue<Kind>(&mut self, frame: Frame<Kind>)
     where
-        Kind: FrameKind,
+        Kind: frame_marker::FrameKind,
     {
         unsafe {
             realsense_sys::rs2_enqueue_frame(
@@ -45,7 +42,7 @@ impl FrameQueue {
     /// Pops a frame from queue.
     ///
     /// The method blocks until a frame is available.
-    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Any>> {
+    pub fn wait(&mut self, timeout: Option<Duration>) -> RsResult<AnyFrame> {
         let timeout_ms = timeout.unwrap_or(DEFAULT_TIMEOUT).as_millis() as c_uint;
 
         let frame = loop {
@@ -73,7 +70,7 @@ impl FrameQueue {
     }
 
     /// Wait for frame asynchronously. It is analogous to [FrameQueue::wait]
-    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<Frame<Any>> {
+    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> RsResult<AnyFrame> {
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
             .unwrap_or(realsense_sys::RS2_DEFAULT_TIMEOUT as c_uint);
@@ -104,7 +101,7 @@ impl FrameQueue {
     }
 
     /// Try to pop a frame and returns immediately.
-    pub fn try_wait(&mut self) -> RsResult<Option<Frame<Any>>> {
+    pub fn try_wait(&mut self) -> RsResult<Option<AnyFrame>> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let mut ptr: *mut realsense_sys::rs2_frame = std::ptr::null_mut();

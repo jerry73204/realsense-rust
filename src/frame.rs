@@ -7,8 +7,8 @@ use crate::{
     common::*,
     error::{ErrorChecker, Result as RsResult},
     kind::{Extension, Format, FrameMetaDataValue, StreamKind, TimestampDomain},
-    sensor::{marker as sensor_marker, Sensor},
-    stream_profile::{marker as stream_marker, StreamProfile},
+    sensor::{AnySensor, DepthSensor},
+    stream_profile::{AnyStreamProfile, StreamProfile},
 };
 
 /// Marker types and traits for [Frame].
@@ -89,7 +89,7 @@ pub mod marker {
 }
 
 /// The trait provides common methods on frames of all kinds.
-pub trait GenericFrame
+pub trait GenericFrameEx
 where
     Self: Sized,
 {
@@ -173,19 +173,19 @@ where
     }
 
     /// Gets the relating sensor instance.
-    fn sensor(&self) -> RsResult<Sensor<sensor_marker::Any>> {
+    fn sensor(&self) -> RsResult<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr =
                 realsense_sys::rs2_get_frame_sensor(self.ptr().as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            Sensor::from_ptr(NonNull::new(ptr).unwrap())
+            AnySensor::from_ptr(NonNull::new(ptr).unwrap())
         };
         Ok(sensor)
     }
 
     /// Gets the relating stream profile.
-    fn stream_profile(&self) -> RsResult<StreamProfile<stream_marker::Any>> {
+    fn stream_profile(&self) -> RsResult<AnyStreamProfile> {
         let profile = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_get_frame_stream_profile(
@@ -224,9 +224,9 @@ where
 }
 
 /// The trait provides methods on frames with video data.
-pub trait VideoFrame
+pub trait VideoFrameEx
 where
-    Self: GenericFrame,
+    Self: GenericFrameEx,
 {
     /// Gets image resolution.
     fn resolution(&self) -> RsResult<Resolution> {
@@ -450,9 +450,9 @@ where
 /// The trait provides methods on frames with depth data.
 ///
 /// Frame types with this trait also implements [VideoFrame](VideoFrame) trait.
-pub trait DepthFrame
+pub trait DepthFrameEx
 where
-    Self: VideoFrame,
+    Self: VideoFrameEx,
 {
     /// Gets distance at given coordinates.
     fn distance(&self, x: usize, y: usize) -> RsResult<f32> {
@@ -473,7 +473,7 @@ where
     /// Gets the length in meter per distance unit.
     fn depth_units(&self) -> RsResult<f32> {
         let sensor = self.sensor()?;
-        let sensor = sensor.try_extend_to::<sensor_marker::Depth>()?.unwrap();
+        let sensor: DepthSensor = sensor.try_extend_to()?.unwrap();
         let depth_units = sensor.depth_units()?;
         Ok(depth_units)
     }
@@ -482,9 +482,9 @@ where
 /// The trait provides methods on frames with disparity data.
 ///
 /// Frame types with this trait also implements [DepthFrame](DepthFrame) trait.
-pub trait DisparityFrame
+pub trait DisparityFrameEx
 where
-    Self: DepthFrame,
+    Self: DepthFrameEx,
 {
     /// Retrieves the distance between the two IR sensors.
     fn baseline(&self) -> RsResult<f32> {
@@ -506,15 +506,24 @@ where
 /// extend any one of the kind, it falls back to [ExtendedFrame::Other](ExtendedFrame::Other) variant.
 #[derive(Debug)]
 pub enum ExtendedFrame {
-    Points(Frame<marker::Points>),
-    Composite(Frame<marker::Composite>),
-    Video(Frame<marker::Video>),
-    Depth(Frame<marker::Depth>),
-    Disparity(Frame<marker::Disparity>),
-    Motion(Frame<marker::Motion>),
-    Pose(Frame<marker::Pose>),
-    Other(Frame<marker::Any>),
+    Points(PointsFrame),
+    Composite(CompositeFrame),
+    Video(VideoFrame),
+    Depth(DepthFrame),
+    Disparity(DisparityFrame),
+    Motion(MotionFrame),
+    Pose(PoseFrame),
+    Other(AnyFrame),
 }
+
+pub type PointsFrame = Frame<marker::Points>;
+pub type CompositeFrame = Frame<marker::Composite>;
+pub type VideoFrame = Frame<marker::Video>;
+pub type DepthFrame = Frame<marker::Depth>;
+pub type DisparityFrame = Frame<marker::Disparity>;
+pub type MotionFrame = Frame<marker::Motion>;
+pub type PoseFrame = Frame<marker::Pose>;
+pub type AnyFrame = Frame<marker::Any>;
 
 /// Represents a collection of sensor data.
 #[derive(Debug)]
@@ -526,7 +535,7 @@ where
     _phantom: PhantomData<Kind>,
 }
 
-impl<Kind> GenericFrame for Frame<Kind>
+impl<Kind> GenericFrameEx for Frame<Kind>
 where
     Kind: marker::FrameKind,
 {
@@ -548,21 +557,21 @@ where
     }
 }
 
-impl VideoFrame for Frame<marker::Video> {}
+impl VideoFrameEx for VideoFrame {}
 
-impl VideoFrame for Frame<marker::Depth> {}
+impl VideoFrameEx for DepthFrame {}
 
-impl DepthFrame for Frame<marker::Depth> {}
+impl DepthFrameEx for DepthFrame {}
 
-impl VideoFrame for Frame<marker::Disparity> {}
+impl VideoFrameEx for DisparityFrame {}
 
-impl DepthFrame for Frame<marker::Disparity> {}
+impl DepthFrameEx for DisparityFrame {}
 
-impl DisparityFrame for Frame<marker::Disparity> {}
+impl DisparityFrameEx for DisparityFrame {}
 
 impl<Kind> Frame<Kind> where Kind: marker::FrameKind {}
 
-impl Frame<marker::Any> {
+impl AnyFrame {
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
         Kind: marker::NonAnyFrameKind,
@@ -640,7 +649,7 @@ impl Frame<marker::Any> {
     }
 }
 
-impl Frame<marker::Composite> {
+impl CompositeFrame {
     /// Gets the number of frames included in the composite frame.
     pub fn len(&self) -> RsResult<usize> {
         let len = unsafe {
@@ -663,7 +672,7 @@ impl Frame<marker::Composite> {
     /// Gets the frame in frameset by index.
     ///
     /// The method throws error if index is out of bound given by [Frame::len].
-    pub fn get(&self, index: usize) -> RsResult<Option<Frame<marker::Any>>> {
+    pub fn get(&self, index: usize) -> RsResult<Option<AnyFrame>> {
         let len = self.len()?;
         if index >= len {
             return Ok(None);
@@ -723,20 +732,20 @@ impl Frame<marker::Composite> {
         Ok(None)
     }
 
-    pub fn color_frame(&self) -> RsResult<Option<Frame<marker::Video>>> {
+    pub fn color_frame(&self) -> RsResult<Option<VideoFrame>> {
         self.first_of::<marker::Video>(StreamKind::Color)
     }
 
-    pub fn depth_frame(&self) -> RsResult<Option<Frame<marker::Depth>>> {
+    pub fn depth_frame(&self) -> RsResult<Option<DepthFrame>> {
         self.first_of::<marker::Depth>(StreamKind::Depth)
     }
 
-    pub fn pose_frame(&self) -> RsResult<Option<Frame<marker::Pose>>> {
+    pub fn pose_frame(&self) -> RsResult<Option<PoseFrame>> {
         self.first_of::<marker::Pose>(StreamKind::Pose)
     }
 }
 
-impl Frame<marker::Pose> {
+impl PoseFrame {
     /// Gets the pose data.
     pub fn pose(&self) -> RsResult<PoseData> {
         let pose_data = unsafe {
@@ -768,7 +777,7 @@ pub struct TextureCoordinate {
 // SAFETY: TextureCoordinate is a POD type.
 unsafe impl safe_transmute::TriviallyTransmutable for TextureCoordinate {}
 
-impl Frame<marker::Points> {
+impl PointsFrame {
     /// Gets vertices of point cloud.
     pub fn vertices<'a>(&'a self) -> RsResult<&'a [realsense_sys::rs2_vertex]> {
         let n_points = self.points_count()?;
@@ -824,7 +833,7 @@ impl Frame<marker::Points> {
     }
 }
 
-impl Frame<marker::Motion> {
+impl MotionFrame {
     /// Gets motion data.
     pub fn motion(&self) -> RsResult<[f32; 3]> {
         let slice = safe_transmute::transmute_many::<f32, PedanticGuard>(self.data()?).unwrap();
@@ -835,8 +844,8 @@ impl Frame<marker::Motion> {
     }
 }
 
-impl IntoIterator for Frame<marker::Composite> {
-    type Item = RsResult<Frame<marker::Any>>;
+impl IntoIterator for CompositeFrame {
+    type Item = RsResult<AnyFrame>;
     type IntoIter = CompositeFrameIntoIter;
 
     /// The method internally calls [Frame::try_into_iter](Frame::try_into_iter).
@@ -882,7 +891,7 @@ pub struct CompositeFrameIntoIter {
 }
 
 impl Iterator for CompositeFrameIntoIter {
-    type Item = RsResult<Frame<marker::Any>>;
+    type Item = RsResult<AnyFrame>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {
@@ -934,7 +943,7 @@ pub struct CompositeFrameIter {
 }
 
 impl Iterator for CompositeFrameIter {
-    type Item = RsResult<Frame<marker::Any>>;
+    type Item = RsResult<AnyFrame>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {

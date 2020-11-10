@@ -11,8 +11,7 @@ mod example {
     };
     use nalgebra::Point3;
     use realsense_rust::{
-        prelude::*, processing_block::marker as processing_block_marker, Config, Error as RsError,
-        Format, Pipeline, ProcessingBlock, Resolution, StreamKind,
+        prelude::*, Config, Error as RsError, Format, Pipeline, PointCloud, Resolution, StreamKind,
     };
     use std::time::Duration;
 
@@ -79,7 +78,7 @@ mod example {
         });
 
         // pointcloud filter
-        let mut pointcloud = ProcessingBlock::<processing_block_marker::PointCloud>::create()?;
+        let mut pointcloud = PointCloud::create()?;
 
         // init pipeline
         let pipeline = Pipeline::new()?;

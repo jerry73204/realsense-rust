@@ -118,6 +118,19 @@ where
     _phantom: PhantomData<Kind>,
 }
 
+// type aliases
+
+pub type ColorSensor = Sensor<marker::Color>;
+pub type DepthSensor = Sensor<marker::Depth>;
+pub type DepthStereoSensor = Sensor<marker::DepthStereo>;
+pub type L500DepthSensor = Sensor<marker::L500Depth>;
+pub type MotionSensor = Sensor<marker::Motion>;
+pub type FishEyeSensor = Sensor<marker::FishEye>;
+pub type SoftwareSensor = Sensor<marker::Software>;
+pub type PoseSensor = Sensor<marker::Pose>;
+pub type Tm2Sensor = Sensor<marker::Tm2>;
+pub type AnySensor = Sensor<marker::Any>;
+
 impl<Kind> Sensor<Kind>
 where
     Kind: marker::SensorKind,
@@ -287,7 +300,7 @@ where
     }
 }
 
-impl Sensor<marker::Any> {
+impl AnySensor {
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
         Kind: marker::NonAnySensorKind,
@@ -374,7 +387,7 @@ impl Sensor<marker::Any> {
     }
 }
 
-impl Sensor<marker::Depth> {
+impl DepthSensor {
     /// Gets the depth units of depth sensor.
     pub fn depth_units(&self) -> RsResult<f32> {
         self.get_option(Rs2Option::DepthUnits)

@@ -51,10 +51,10 @@ pub mod marker {
 /// The enumeration of extended stream profile type returned by [StreamProfile::try_extend](StreamProfile::try_extend).
 #[derive(Debug)]
 pub enum ExtendedStreamProfile {
-    Video(StreamProfile<marker::Video>),
-    Motion(StreamProfile<marker::Motion>),
-    Pose(StreamProfile<marker::Pose>),
-    Other(StreamProfile<marker::Any>),
+    Video(VideoStreamProfile),
+    Motion(MotionStreamProfile),
+    Pose(PoseStreamProfile),
+    Other(AnyStreamProfile),
 }
 
 /// The profile of stream.
@@ -67,6 +67,13 @@ where
     from_clone: bool,
     _phantom: PhantomData<Kind>,
 }
+
+// type aliases
+
+pub type VideoStreamProfile = StreamProfile<marker::Video>;
+pub type MotionStreamProfile = StreamProfile<marker::Motion>;
+pub type PoseStreamProfile = StreamProfile<marker::Pose>;
+pub type AnyStreamProfile = StreamProfile<marker::Any>;
 
 impl<Kind> StreamProfile<Kind>
 where
@@ -180,7 +187,7 @@ where
     }
 }
 
-impl StreamProfile<marker::Any> {
+impl AnyStreamProfile {
     /// Check if the stream is extendable to the given extension.
     pub fn is_extendable_to<Kind>(&self) -> RsResult<bool>
     where
@@ -239,7 +246,7 @@ impl StreamProfile<marker::Any> {
     }
 }
 
-impl StreamProfile<marker::Video> {
+impl VideoStreamProfile {
     /// Gets the resolution of stream.
     pub fn resolution(&self) -> RsResult<Resolution> {
         let mut width = MaybeUninit::uninit();
@@ -278,7 +285,7 @@ impl StreamProfile<marker::Video> {
     }
 }
 
-impl StreamProfile<marker::Motion> {
+impl MotionStreamProfile {
     /// Gets the motion intrinsic parameters.
     pub fn motion_intrinsics(&self) -> RsResult<MotionIntrinsics> {
         unsafe {

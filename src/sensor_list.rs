@@ -3,7 +3,7 @@
 use crate::{
     common::*,
     error::{ErrorChecker, Result as RsResult},
-    sensor::{marker as sensor_marker, Sensor},
+    sensor::{AnySensor, Sensor},
 };
 
 /// An iterable list of sensors.
@@ -16,7 +16,7 @@ impl SensorList {
     /// Gets the sensor instance at given index.
     ///
     /// It returns error if index is out of bound given by [SensorList::len].
-    pub fn get(&mut self, index: usize) -> RsResult<Self> {
+    pub fn get(&mut self, index: usize) -> RsResult<AnySensor> {
         let sensor = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = realsense_sys::rs2_create_sensor(
@@ -25,7 +25,7 @@ impl SensorList {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            Self::from_ptr(NonNull::new(ptr as *mut _).unwrap())
+            Sensor::from_ptr(NonNull::new(ptr as *mut _).unwrap())
         };
         Ok(sensor)
     }
@@ -72,7 +72,7 @@ impl SensorList {
 }
 
 impl IntoIterator for SensorList {
-    type Item = RsResult<Sensor<sensor_marker::Any>>;
+    type Item = RsResult<AnySensor>;
     type IntoIter = SensorListIntoIter;
 
     /// The method internally calls [SensorList::try_into_iter](SensorList::try_into_iter).
@@ -94,7 +94,7 @@ pub struct SensorListIntoIter {
 }
 
 impl Iterator for SensorListIntoIter {
-    type Item = RsResult<Sensor<sensor_marker::Any>>;
+    type Item = RsResult<AnySensor>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.fused {
