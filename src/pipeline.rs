@@ -148,6 +148,18 @@ impl InactivePipeline {
         mem::forget(self);
         (ptr.as_ptr(), context)
     }
+
+    pub unsafe fn from_raw_parts(
+        pipeline_ptr: *mut sys::rs2_pipeline,
+        context_ptr: *mut sys::rs2_context,
+    ) -> Self {
+        let context = Context::from_raw(context_ptr);
+        Self {
+            ptr: NonNull::new(pipeline_ptr).unwrap(),
+            context,
+            state: pipeline_kind::Inactive,
+        }
+    }
 }
 
 impl ActivePipeline {
@@ -282,6 +294,21 @@ impl ActivePipeline {
         let (pipeline_profile, config) = unsafe { self.state.unsafe_clone().into_raw_parts() };
         mem::forget(self);
         (ptr.as_ptr(), context, pipeline_profile, config)
+    }
+
+    pub unsafe fn from_raw_parts(
+        pipeline_ptr: *mut sys::rs2_pipeline,
+        context_ptr: *mut sys::rs2_context,
+        profile_ptr: *mut sys::rs2_pipeline_profile,
+        config_ptr: Option<*mut sys::rs2_config>,
+    ) -> Self {
+        let context = Context::from_raw(context_ptr);
+        let state = pipeline_kind::Active::from_raw_parts(profile_ptr, config_ptr);
+        Self {
+            ptr: NonNull::new(pipeline_ptr).unwrap(),
+            context,
+            state,
+        }
     }
 }
 
