@@ -5,17 +5,16 @@ It supports asynchronous API and integration with [image](https://github.com/ima
 
 ## Usage
 
-Visit RealSense official repository ([link](https://github.com/IntelRealSense/librealsense)) and install **librealsense 2.36.0** on your system.
+Make sure **librealsense 2.39.0** is installed on your system. You may visit [RealSense official repository](https://github.com/IntelRealSense/librealsense).
 
-To add this crate to your project,
+Add this crate to your `Cargo.toml`.
 
 ```toml
 [dependencies]
 realsense-rust = "0.4"
 ```
 
-
-If you have troubles compiling this project, perhaps your system is using older librealsense. Try to update the library. Otherwise you can enable `buildtime-bindgen` cargo feature to generate Rust bindings during build time.
+If you're using older librealsense for reasons. You may enable `buildtime-bindgen` to re-generate bindings and good luck.
 
 ```toml
 [dependencies]
@@ -31,26 +30,50 @@ realsense-rust = { version = "0.4", features = ["buildtime-bindgen"] }
 
 ## Examples
 
-Please visit the [examples](examples) directory to see the example usages.
+To capture image with your RealSense device,
 
-## Contribute to the project
 
-### realsense-sys: Low-level API
-
-The project uses bindgen to generate bindings from pure C API.
-
-We suggest the official librealsense2 [documentation](https://github.com/IntelRealSense/librealsense/tree/master/doc) to check out the actual usage of low-level API.
-
-Also, you can choose to browse the generated document for `realsense-sys`.
-
-```sh
-cd $repo/realsense-sys
-cargo doc --open
+```rust
+cargo run --release --example capture_images
 ```
 
-### realsense-rust: High-level API
+More examples can be found in [examples](examples) directory.
 
-The `realsense-rust` crate is basically a wrapper upon the `realsense-sys` crate. We suggest to take C++ API as reference and rewrite them in rusty style.
+## Develop this project
+
+### Work with realsense-sys low-level API
+
+The realsense-sys crate provides C bindings generated from librealsense2 headers. The reference can be found on RealSense official [documentation](https://github.com/IntelRealSense/librealsense/tree/master/doc).
+
+Import realsense-sys to your `Cargo.toml`.
+
+```toml
+[dependencies]
+realsense-sys = "0.2"
+```
+
+and you can call low level C functions.
+
+```rust
+let pipeline = Pipeline::new()?;
+let (pipeline_ptr, context_ptr) = pipeline.into_raw_parts();
+
+unsafe {
+    let mut error: *mut realsense_sys::rs2_error = std::ptr::null_mut();
+    realsense_sys::rs2_pipeline_start(pipeline_ptr, &mut error as *mut _);
+    if !error.is_null() {
+        panic!("fail");
+    }
+}
+```
+
+### Generate documents from source code
+
+The API changes may not be found on docs.rs. To generate document from the most recent commit,
+
+```sh
+cargo doc --open
+```
 
 ## License
 
