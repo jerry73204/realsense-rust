@@ -1,3 +1,39 @@
+//! The crate provides high level API to librealsense2.
+//!
+//! It features asynchronous API and integration with [image](https://crates.io/crates/image) and [nalgebra](https://crates.io/crates/nalgebra).
+//!
+//! ## Cargo Features
+//!
+//! The crate enables **with-nalgebra** and **with-image** features by default.
+//!
+//! - **with-nalgebra** (default): Enable [nalgebra](https://github.com/rustsim/nalgebra) support.
+//! - **with-image** (default): Enable [image](https://github.com/image-rs/image) support.
+//! - **buildtime-bindgen**: Generate Rust bindings during build time.
+//! - **device-test**: Enable tests that requires connections to RealSense devices.
+//!
+//! ## Get Started
+//!
+//! You can start by [Pipeline](Pipeline). This is the minimal example to capture color and depth images.
+//!
+//! ```no_run
+//! use anyhow::Result;
+//! use realsense_rust::{Config, Format, Pipeline, StreamKind};
+//!
+//! fn main() -> anyhow::Result<()> {
+//!     let pipeline = Pipeline::new()?;
+//!     let config = Config::new()?
+//!         .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
+//!         .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
+//!     let mut pipeline = pipeline.start(config)?;
+//!
+//!     let frames = pipeline.wait(None)?.unwrap();
+//!     let color_frame = frames.color_frame()?.unwrap();
+//!     let depth_frame = frames.depth_frame()?.unwrap();
+//!
+//!     Ok(())
+//! }
+//! ```
+
 pub mod base;
 mod common;
 pub mod config;

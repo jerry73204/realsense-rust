@@ -1,9 +1,12 @@
+//! Extension trait for runtime configuration.
+
 use crate::{
     common::*,
     error::{ErrorChecker, Result},
     kind::Rs2Option,
 };
 
+/// The extension trait extracts runtime configuration from implemented type.
 pub trait ToOptions {
     fn to_options(&self) -> Result<HashMap<Rs2Option, OptionHandle>> {
         let options_ptr = self.get_options_ptr();
@@ -45,6 +48,7 @@ pub trait ToOptions {
     fn get_options_ptr(&self) -> NonNull<sys::rs2_options>;
 }
 
+/// A handle pointing to the option value.
 #[derive(Debug, Clone)]
 pub struct OptionHandle {
     ptr: NonNull<sys::rs2_options>,

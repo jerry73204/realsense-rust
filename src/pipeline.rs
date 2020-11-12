@@ -143,6 +143,9 @@ impl InactivePipeline {
         Ok(pipeline)
     }
 
+    /// Unpack the pipeline into raw pointers.
+    ///
+    /// It returns the raw pointer along with the context pointer that the pipeline depends on.
     pub fn into_raw_parts(self) -> (*mut sys::rs2_pipeline, *mut sys::rs2_context) {
         // take fields without invoking drop()
         let ptr = self.ptr;
@@ -151,6 +154,9 @@ impl InactivePipeline {
         (ptr.as_ptr(), context)
     }
 
+    /// Construct an inactive pipeline from raw pointers.
+    ///
+    /// It assumes the pipeline pointers is built atop from the context pointer.
     pub unsafe fn from_raw_parts(
         pipeline_ptr: *mut sys::rs2_pipeline,
         context_ptr: *mut sys::rs2_context,
@@ -300,6 +306,9 @@ impl ActivePipeline {
         Ok(pipeline)
     }
 
+    /// Unpack the pipeline into raw pointers.
+    ///
+    /// After calling this method, you have to take care of their lifetime manually.
     pub fn into_raw_parts(
         self,
     ) -> (
@@ -316,6 +325,10 @@ impl ActivePipeline {
         (ptr.as_ptr(), context, pipeline_profile, config)
     }
 
+    /// Construct an active pipeline from raw pointers.
+    ///
+    /// It assumes the pipeline pointer is built from the context pointer, and profile pointer
+    /// is the active profile of the pipeline.
     pub unsafe fn from_raw_parts(
         pipeline_ptr: *mut sys::rs2_pipeline,
         context_ptr: *mut sys::rs2_context,

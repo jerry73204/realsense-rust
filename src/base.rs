@@ -221,7 +221,6 @@ mod rs2_image {
     ///
     /// This is a wrapper of various [ImageBuffer](image::ImageBuffer) variants.
     /// It pixel data is stored in slice for better performance.
-    /// The type implements `Into<DynamicImage>` to create owned type.
     #[derive(Debug, Clone)]
     pub enum Rs2Image<'a> {
         Bgr8(ImageBuffer<Bgr<u8>, &'a [u8]>),
@@ -231,6 +230,7 @@ mod rs2_image {
         Luma16(ImageBuffer<Luma<u16>, &'a [u16]>),
     }
 
+    /// Creates an owned image by coping underlying buffer.
     impl<'a> Rs2Image<'a> {
         pub fn to_owned(&self) -> DynamicImage {
             self.into()

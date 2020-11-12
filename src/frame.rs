@@ -748,7 +748,6 @@ impl IntoIterator for CompositeFrame {
     ///
     /// # Panics
     /// This method panics if [Frame::try_into_iter](Frame::try_into_iter) returns error.
-    ///
     fn into_iter(self) -> Self::IntoIter {
         self.try_into_iter().unwrap()
     }
