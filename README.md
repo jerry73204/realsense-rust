@@ -3,7 +3,7 @@
 The project provides high-level bindings to librealsense2 library as well as low-level FFI interface.
 It supports asynchronous API and integration with [image](https://github.com/image-rs/image) and [nalgebra](https://github.com/rustsim/nalgebra) types.
 
-## Usage
+## Use this crate in your project
 
 Make sure **librealsense 2.39.0** is installed on your system. You may visit [RealSense official repository](https://github.com/IntelRealSense/librealsense).
 
@@ -23,10 +23,35 @@ realsense-rust = { version = "0.4", features = ["buildtime-bindgen"] }
 
 ## Cargo Features
 
+The crate enables **with-nalgebra** and **with-image** features by default.
+
 - **with-nalgebra** (default): Enable [nalgebra](https://github.com/rustsim/nalgebra) support.
 - **with-image** (default): Enable [image](https://github.com/image-rs/image) support.
 - **buildtime-bindgen**: Generate Rust bindings during build time.
 - **device-test**: Enable tests that requires connections to RealSense devices.
+
+## Get Started
+
+You can start by `Pipeline`. This is the minimal example to capture color and depth images.
+
+```rust
+use anyhow::Result;
+use realsense_rust::{Config, Format, Pipeline, StreamKind};
+
+fn main() -> anyhow::Result<()> {
+    let pipeline = Pipeline::new()?;
+    let config = Config::new()?
+        .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
+        .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
+    let mut pipeline = pipeline.start(config)?;
+
+    let frames = pipeline.wait(None)?.unwrap();
+    let color_frame = frames.color_frame()?.unwrap();
+    let depth_frame = frames.depth_frame()?.unwrap();
+
+    Ok(())
+}
+```
 
 ## Examples
 
@@ -43,7 +68,7 @@ More examples can be found in [examples](examples) directory.
 
 ### Work with realsense-sys low-level API
 
-The realsense-sys crate provides C bindings generated from librealsense2 headers. The reference can be found on RealSense official [documentation](https://github.com/IntelRealSense/librealsense/tree/master/doc).
+The realsense-sys crate provides C bindings generated from librealsense headers. The reference can be found on RealSense official [documentation](https://github.com/IntelRealSense/librealsense/tree/master/doc).
 
 Import realsense-sys to your `Cargo.toml`.
 
