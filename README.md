@@ -11,14 +11,14 @@ Add this crate to your `Cargo.toml`.
 
 ```toml
 [dependencies]
-realsense-rust = "0.4"
+realsense-rust = "0.5"
 ```
 
 If you're using older librealsense for reasons. You may enable `buildtime-bindgen` to re-generate bindings and good luck.
 
 ```toml
 [dependencies]
-realsense-rust = { version = "0.4", features = ["buildtime-bindgen"] }
+realsense-rust = { version = "0.5", features = ["buildtime-bindgen"] }
 ```
 
 ## Cargo Features
@@ -74,7 +74,7 @@ Import realsense-sys to your `Cargo.toml`.
 
 ```toml
 [dependencies]
-realsense-sys = "0.2"
+realsense-sys = "0.3"
 ```
 
 and you can call low level C functions.
