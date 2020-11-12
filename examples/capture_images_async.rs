@@ -4,14 +4,14 @@ use anyhow::Result;
 mod example {
     use anyhow::Result;
     use crossbeam::channel;
-    use image::{DynamicImage, ImageFormat};
+    use image::ImageFormat;
     use kiss3d::{
         light::Light,
         window::{State, Window},
     };
     use nalgebra::Point3;
     use realsense_rust::{
-        prelude::*, Config, Error as RsError, Format, Pipeline, PointCloud, Resolution, StreamKind,
+        prelude::*, Config, Format, Pipeline, PointCloud, Resolution, StreamKind,
     };
     use std::time::Duration;
 
@@ -85,7 +85,7 @@ mod example {
         let config = Config::new()?
             .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
             .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
-        let mut pipeline = pipeline.start_async(Some(config)).await?;
+        let mut pipeline = pipeline.start_async(config).await?;
 
         // show stream info
         let profile = pipeline.profile();
@@ -97,13 +97,12 @@ mod example {
         // process frames
         for _ in 0usize..1000 {
             let timeout = Duration::from_millis(1000);
-            let frames_result = pipeline.wait_async(Some(timeout)).await;
-            let frames = match frames_result {
-                Err(RsError::Timeout(..)) => {
+            let frames = match pipeline.wait_async(timeout).await? {
+                Some(frame) => frame,
+                None => {
                     println!("timeout error");
                     continue;
                 }
-                result @ _ => result?,
             };
 
             println!("frame number = {}", frames.number()?);
@@ -113,7 +112,7 @@ mod example {
 
             // save video frame
             {
-                let image: DynamicImage = color_frame.image()?.into();
+                let image = color_frame.owned_image()?;
                 image.save_with_format(
                     format!("sync-video-example-{}.png", color_frame.number()?),
                     ImageFormat::Png,
@@ -126,7 +125,7 @@ mod example {
                 let distance = depth_frame.distance(width / 2, height / 2)?;
                 println!("distance = {}", distance);
 
-                let image: DynamicImage = depth_frame.image()?.into();
+                let image = depth_frame.owned_image()?;
                 image.save_with_format(
                     format!("sync-depth-example-{}.png", depth_frame.number()?),
                     ImageFormat::Png,

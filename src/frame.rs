@@ -192,7 +192,7 @@ where
 
     /// Gets color image buffer referencing underlying raw data.
     #[cfg(feature = "with-image")]
-    fn image(&self) -> Result<Rs2Image> {
+    fn ref_image(&self) -> Result<Rs2Image> {
         let StreamProfileData { format, .. } = self.stream_profile()?.get_data()?;
         let raw_data = self.data()?;
         let Resolution { width, height } = self.resolution()?;
@@ -350,6 +350,12 @@ where
         };
 
         Ok(image)
+    }
+
+    /// Builds an owned image. Note that it incurs memory copy.
+    #[cfg(feature = "with-image")]
+    fn owned_image(&self) -> Result<DynamicImage> {
+        Ok(self.ref_image()?.into())
     }
 }
 

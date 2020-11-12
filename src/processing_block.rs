@@ -229,7 +229,13 @@ impl ThresholdFilter {
         Ok(processing_block)
     }
 
-    pub fn with_options(min_dist: Option<f32>, max_dist: Option<f32>) -> Result<Self> {
+    pub fn with_options(
+        min_dist: impl Into<Option<f32>>,
+        max_dist: impl Into<Option<f32>>,
+    ) -> Result<Self> {
+        let min_dist = min_dist.into();
+        let max_dist = max_dist.into();
+
         let processing_block = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = sys::rs2_create_threshold(checker.inner_mut_ptr());

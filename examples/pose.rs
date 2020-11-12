@@ -1,21 +1,20 @@
 use anyhow::{bail, Result};
-use realsense_rust::{Error as RsError, Format as RsFormat, StreamKind};
+use realsense_rust::{Config, Context, Format as RsFormat, Pipeline, StreamKind};
 use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Looking for RealSense devices");
-    let ctx = realsense_rust::Context::new()?;
+    let ctx = Context::new()?;
     let devices = ctx.query_devices(None)?;
     let dcount = devices.len()?;
     if dcount == 0 {
         bail!("No RS devices found");
     }
 
-    let pipeline = realsense_rust::Pipeline::new()?;
-    let config = realsense_rust::Config::new()?;
-    let config = config.enable_stream(StreamKind::Pose, 0, 0, 0, RsFormat::_6Dof, 200)?;
-    let mut pipeline = pipeline.start(Some(config))?;
+    let pipeline = Pipeline::new()?;
+    let config = Config::new()?.enable_stream(StreamKind::Pose, 0, 0, 0, RsFormat::_6Dof, 200)?;
+    let mut pipeline = pipeline.start(config)?;
 
     let profile = pipeline.profile();
     for (idx, stream_result) in profile.streams()?.try_into_iter()?.enumerate() {
@@ -25,16 +24,12 @@ async fn main() -> Result<()> {
 
     loop {
         let timeout = Duration::from_millis(1000);
-        let frames_result = pipeline.wait_async(Some(timeout)).await;
-        let frames = match frames_result {
-            Err(RsError::Timeout(..)) => {
-                println!("timeout error");
-                continue;
-            }
-            result => result?,
+        let frames = match pipeline.wait_async(timeout).await? {
+            Some(frame) => frame,
+            None => continue,
         };
-        let poseframe = frames.pose_frame()?.unwrap();
-        let pose = poseframe.pose()?;
-        println!("posedata: {:?}", pose);
+        let pose_frame = frames.pose_frame()?.unwrap();
+        let pose = pose_frame.pose()?;
+        println!("pose data: {:?}", pose);
     }
 }

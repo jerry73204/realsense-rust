@@ -56,7 +56,8 @@ impl InactivePipeline {
     /// Start the pipeline with optional config.
     ///
     /// The method consumes inactive pipeline itself, and returns the started pipeine.
-    pub fn start(self, config: Option<Config>) -> Result<ActivePipeline> {
+    pub fn start(self, config: impl Into<Option<Config>>) -> Result<ActivePipeline> {
+        let config = config.into();
         let ptr = match &config {
             Some(conf) => unsafe {
                 let mut checker = ErrorChecker::new();
@@ -90,7 +91,8 @@ impl InactivePipeline {
     }
 
     /// Start the pipeline asynchronously. It is analogous to [Pipeline::start].
-    pub async fn start_async(self, config: Option<Config>) -> Result<ActivePipeline> {
+    pub async fn start_async(self, config: impl Into<Option<Config>>) -> Result<ActivePipeline> {
+        let config = config.into();
         let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
         let config_ptr_opt = config
             .as_ref()
@@ -163,13 +165,19 @@ impl InactivePipeline {
 }
 
 impl ActivePipeline {
-    /// Gets the profile of pipeline.
+    /// Gets the active profile of pipeline.
     pub fn profile(&self) -> &PipelineProfile {
         &self.state.profile
     }
 
-    /// Block and wait for next frame.
-    pub fn wait(&mut self, timeout: Option<Duration>) -> Result<CompositeFrame> {
+    /// Block until the next frame is available.
+    ///
+    /// When the timeout is set, it returns `Ok(Some(frame))` if the frame is available,
+    /// or returns `Ok(None)` when timeout occurs.
+    ///
+    /// If the timeout is `None`, it waits indefinitely before the next frame.
+    pub fn wait(&mut self, timeout: impl Into<Option<Duration>>) -> Result<Option<CompositeFrame>> {
+        let timeout = timeout.into();
         let timeout_ms = timeout.unwrap_or(DEFAULT_TIMEOUT).as_millis() as c_uint;
 
         let frame = loop {
@@ -183,18 +191,18 @@ impl ActivePipeline {
             };
 
             match (timeout, checker.check()) {
-                (None, Err(RsError::Timeout(..))) => continue,
-                tuple => {
-                    let (_, result) = tuple;
-                    result?;
+                (None, Err(RsError::Timeout(_))) => continue,
+                (Some(_), Err(RsError::Timeout(_))) => {
+                    return Ok(None);
                 }
+                (_, result) => result?,
             }
 
             let frame = unsafe { Frame::from_raw(ptr) };
             break frame;
         };
 
-        Ok(frame)
+        Ok(Some(frame))
     }
 
     /// Poll if next frame is immediately available.
@@ -224,8 +232,19 @@ impl ActivePipeline {
         }
     }
 
-    /// Wait for frame asynchronously. It is analogous to [Pipeline::wait]
-    pub async fn wait_async(&mut self, timeout: Option<Duration>) -> Result<CompositeFrame> {
+    /// Wait for the next frame asynchronously.
+    ///
+    /// The method is analogous to [Pipeline::wait].
+    ///
+    /// When the timeout is set, it returns `Ok(Some(frame))` if the frame is available,
+    /// or returns `Ok(None)` when timeout occurs.
+    ///
+    /// If the timeout is `None`, it waits indefinitely before the next frame.
+    pub async fn wait_async(
+        &mut self,
+        timeout: impl Into<Option<Duration>>,
+    ) -> Result<Option<CompositeFrame>> {
+        let timeout = timeout.into();
         let timeout_ms = timeout
             .map(|duration| duration.as_millis() as c_uint)
             .unwrap_or(sys::RS2_DEFAULT_TIMEOUT as c_uint);
@@ -242,8 +261,9 @@ impl ActivePipeline {
                         checker.inner_mut_ptr(),
                     );
                     let result = match (timeout, checker.check()) {
-                        (None, Err(RsError::Timeout(..))) => continue,
-                        (_, result) => result.map(|_| Frame::from_raw(ptr)),
+                        (None, Err(RsError::Timeout(_))) => continue,
+                        (Some(_), Err(RsError::Timeout(_))) => Ok(None),
+                        (_, result) => result.map(|_| Some(Frame::from_raw(ptr))),
                     };
                     break result;
                 }
