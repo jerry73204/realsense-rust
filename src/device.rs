@@ -15,7 +15,7 @@ pub struct Device {
 
 impl Device {
     /// Discover available sensors on device.
-    pub fn query_sensors(&self) -> Result<SensorList> {
+    pub fn sensors(&self) -> Result<SensorList> {
         let list = unsafe {
             let mut checker = ErrorChecker::new();
             let ptr = sys::rs2_query_sensors(self.ptr.as_ptr(), checker.inner_mut_ptr());
