@@ -2,11 +2,9 @@
 #![cfg(feature = "device-test")]
 
 use anyhow::Result;
-use image::{DynamicImage, ImageFormat};
+use image::ImageFormat;
 use lazy_static::lazy_static;
-use realsense_rust::{
-    prelude::*, Config, Error as RsError, ExtendedFrame, Format, Pipeline, Resolution, StreamKind,
-};
+use realsense_rust::{prelude::*, Config, ExtendedFrame, Format, Pipeline, Resolution, StreamKind};
 use std::{sync::Mutex, time::Duration};
 use tokio::runtime::Runtime;
 type Fallible<T> = Result<T, anyhow::Error>;
@@ -30,7 +28,7 @@ fn async_test() -> Result<()> {
         let config = Config::new()?
             .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
             .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
-        let mut pipeline = pipeline.start_async(Some(config)).await?;
+        let mut pipeline = pipeline.start_async(config).await?;
 
         // show stream info
         let profile = pipeline.profile();
@@ -42,13 +40,12 @@ fn async_test() -> Result<()> {
         // process frames
         for _ in 0..16 {
             let timeout = Duration::from_millis(1000);
-            let frames_result = pipeline.wait_async(Some(timeout)).await;
-            let frames = match frames_result {
-                Err(RsError::Timeout(..)) => {
+            let frames = match pipeline.wait_async(timeout).await? {
+                Some(frame) => frame,
+                None => {
                     println!("timeout error");
                     continue;
                 }
-                result @ _ => result?,
             };
 
             println!("frame number = {}", frames.number()?);
@@ -58,8 +55,7 @@ fn async_test() -> Result<()> {
 
                 match frame_any.try_extend()? {
                     ExtendedFrame::Video(frame) => {
-                        let image: DynamicImage = frame.image()?.into();
-
+                        let image = frame.owned_image()?;
                         image.save_with_format(
                             format!("async-video-example-{}.png", frame.number()?),
                             ImageFormat::Png,
@@ -70,7 +66,7 @@ fn async_test() -> Result<()> {
                         let distance = frame.distance(width / 2, height / 2)?;
                         println!("distance = {} meter", distance);
 
-                        let image: DynamicImage = frame.image()?.into();
+                        let image = frame.owned_image()?;
                         image.save_with_format(
                             format!("async-depth-example-{}.png", frame.number()?),
                             ImageFormat::Png,
@@ -98,7 +94,7 @@ fn sync_test() -> Result<()> {
     let config = Config::new()?
         .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
         .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
-    let mut pipeline = pipeline.start(Some(config))?;
+    let mut pipeline = pipeline.start(config)?;
     let profile = pipeline.profile();
 
     // show stream info
@@ -110,13 +106,12 @@ fn sync_test() -> Result<()> {
     // process frames
     for _ in 0..16 {
         let timeout = Duration::from_millis(1000);
-        let frames_result = pipeline.wait(Some(timeout));
-        let frames = match frames_result {
-            Err(RsError::Timeout(..)) => {
+        let frames = match pipeline.wait(timeout)? {
+            Some(frame) => frame,
+            None => {
                 println!("timeout error");
                 continue;
             }
-            result @ _ => result?,
         };
 
         println!("frame number = {}", frames.number()?);
@@ -126,8 +121,7 @@ fn sync_test() -> Result<()> {
 
             match frame_any.try_extend()? {
                 ExtendedFrame::Video(frame) => {
-                    let image: DynamicImage = frame.image()?.into();
-
+                    let image = frame.owned_image()?;
                     image.save_with_format(
                         format!("sync-video-example-{}.png", frame.number()?),
                         ImageFormat::Png,
@@ -138,7 +132,7 @@ fn sync_test() -> Result<()> {
                     let distance = frame.distance(width / 2, height / 2)?;
                     println!("distance = {}", distance);
 
-                    let image: DynamicImage = frame.image()?.into();
+                    let image = frame.owned_image()?;
                     image.save_with_format(
                         format!("sync-depth-example-{}.png", frame.number()?),
                         ImageFormat::Png,
