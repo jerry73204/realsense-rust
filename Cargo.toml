@@ -28,7 +28,7 @@ crossbeam = "0.8"
 [features]
 default = ["with-nalgebra", "with-image"]
 buildtime-bindgen = ["realsense-sys/buildtime-bindgen"]
-device-test = []
+device-test = ["with-image"]
 with-nalgebra = ["nalgebra"]
 with-image = ["image"]
 doc-only = ["realsense-sys/doc-only"]

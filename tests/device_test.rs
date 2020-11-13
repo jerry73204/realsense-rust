@@ -1,4 +1,3 @@
-#![cfg(feature = "with-image")]
 #![cfg(feature = "device-test")]
 
 use anyhow::Result;
