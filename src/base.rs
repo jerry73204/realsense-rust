@@ -126,8 +126,8 @@ unsafe impl Sync for Intrinsics {}
 /// The extrinsic parameters of stream.
 pub struct Extrinsics(pub sys::rs2_extrinsics);
 
+#[cfg(feature = "with-nalgebra")]
 impl Extrinsics {
-    #[cfg(feature = "with-nalgebra")]
     pub fn to_isometry(&self) -> Isometry3<f32> {
         let rotation = {
             let matrix = MatrixMN::<f32, U3, U3>::from_iterator(self.0.rotation.iter().copied());
@@ -175,48 +175,45 @@ unsafe impl Sync for Extrinsics {}
 pub struct PoseData(pub sys::rs2_pose);
 
 impl PoseData {
-    #[cfg(feature = "with-nalgebra")]
-    pub fn translation(&self) -> Translation3<f32> {
-        let sys::rs2_vector { x, y, z } = self.0.translation;
-        Translation3::new(x, y, z)
-    }
-
-    #[cfg(feature = "with-nalgebra")]
-    pub fn velocity(&self) -> Vector3<f32> {
-        let sys::rs2_vector { x, y, z } = self.0.velocity;
-        Vector3::new(x, y, z)
-    }
-
-    #[cfg(feature = "with-nalgebra")]
-    pub fn acceleration(&self) -> Vector3<f32> {
-        let sys::rs2_vector { x, y, z } = self.0.acceleration;
-        Vector3::new(x, y, z)
-    }
-
-    #[cfg(feature = "with-nalgebra")]
-    pub fn rotation(&self) -> UnitQuaternion<f32> {
-        let sys::rs2_quaternion { x, y, z, w } = self.0.rotation;
-        Unit::new_unchecked(Quaternion::new(w, x, z, y))
-    }
-
-    #[cfg(feature = "with-nalgebra")]
-    pub fn angular_velocity(&self) -> Vector3<f32> {
-        let sys::rs2_vector { x, y, z } = self.0.angular_velocity;
-        Vector3::new(x, y, z)
-    }
-
-    #[cfg(feature = "with-nalgebra")]
-    pub fn angular_acceleration(&self) -> Vector3<f32> {
-        let sys::rs2_vector { x, y, z } = self.0.angular_acceleration;
-        Vector3::new(x, y, z)
-    }
-
     pub fn tracker_confidence(&self) -> u32 {
         self.0.tracker_confidence as u32
     }
 
     pub fn mapper_confidence(&self) -> u32 {
         self.0.mapper_confidence as u32
+    }
+}
+
+#[cfg(feature = "with-nalgebra")]
+impl PoseData {
+    pub fn translation(&self) -> Translation3<f32> {
+        let sys::rs2_vector { x, y, z } = self.0.translation;
+        Translation3::new(x, y, z)
+    }
+
+    pub fn velocity(&self) -> Vector3<f32> {
+        let sys::rs2_vector { x, y, z } = self.0.velocity;
+        Vector3::new(x, y, z)
+    }
+
+    pub fn acceleration(&self) -> Vector3<f32> {
+        let sys::rs2_vector { x, y, z } = self.0.acceleration;
+        Vector3::new(x, y, z)
+    }
+
+    pub fn rotation(&self) -> UnitQuaternion<f32> {
+        let sys::rs2_quaternion { x, y, z, w } = self.0.rotation;
+        Unit::new_unchecked(Quaternion::new(w, x, z, y))
+    }
+
+    pub fn angular_velocity(&self) -> Vector3<f32> {
+        let sys::rs2_vector { x, y, z } = self.0.angular_velocity;
+        Vector3::new(x, y, z)
+    }
+
+    pub fn angular_acceleration(&self) -> Vector3<f32> {
+        let sys::rs2_vector { x, y, z } = self.0.angular_acceleration;
+        Vector3::new(x, y, z)
     }
 }
 
