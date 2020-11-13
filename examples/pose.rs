@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
 
     let pipeline = Pipeline::new()?;
     let config = Config::new()?.enable_stream(StreamKind::Pose, 0, 0, 0, RsFormat::_6Dof, 200)?;
-    let mut pipeline = pipeline.start(config)?;
+    let mut pipeline = pipeline.start(&config)?;
 
     let profile = pipeline.profile();
     for (idx, stream_result) in profile.streams()?.try_into_iter()?.enumerate() {

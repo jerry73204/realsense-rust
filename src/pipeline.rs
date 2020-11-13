@@ -53,12 +53,12 @@ impl InactivePipeline {
         Ok(pipeline)
     }
 
-    /// Start the pipeline with optional config.
+    /// Start the pipeline with an optional config.
     ///
     /// The method consumes inactive pipeline itself, and returns the started pipeine.
-    pub fn start(self, config: impl Into<Option<Config>>) -> Result<ActivePipeline> {
+    pub fn start<'a>(self, config: impl Into<Option<&'a Config>>) -> Result<ActivePipeline> {
         let config = config.into();
-        let ptr = match &config {
+        let ptr = match config {
             Some(conf) => unsafe {
                 let mut checker = ErrorChecker::new();
                 let ptr = sys::rs2_pipeline_start_with_config(
@@ -83,7 +83,7 @@ impl InactivePipeline {
             Pipeline {
                 ptr: NonNull::new(pipeline_ptr).unwrap(),
                 context: unsafe { Context::from_raw(context_ptr) },
-                state: pipeline_kind::Active { profile, config },
+                state: pipeline_kind::Active { profile },
             }
         };
 
@@ -91,12 +91,13 @@ impl InactivePipeline {
     }
 
     /// Start the pipeline asynchronously. It is analogous to [Pipeline::start].
-    pub async fn start_async(self, config: impl Into<Option<Config>>) -> Result<ActivePipeline> {
+    pub async fn start_async<'a>(
+        self,
+        config: impl Into<Option<&'a Config>>,
+    ) -> Result<ActivePipeline> {
         let config = config.into();
         let pipeline_ptr = AtomicPtr::new(self.ptr.as_ptr());
-        let config_ptr_opt = config
-            .as_ref()
-            .map(|conf| AtomicPtr::new(conf.ptr.as_ptr()));
+        let config_ptr_opt = config.map(|conf| AtomicPtr::new(conf.ptr.as_ptr()));
         let (tx, rx) = futures::channel::oneshot::channel();
 
         // start blocking thread
@@ -136,7 +137,7 @@ impl InactivePipeline {
             Pipeline {
                 ptr: NonNull::new(pipeline_ptr).unwrap(),
                 context: unsafe { Context::from_raw(context_ptr) },
-                state: pipeline_kind::Active { profile, config },
+                state: pipeline_kind::Active { profile },
             }
         };
 
@@ -292,9 +293,9 @@ impl ActivePipeline {
         }
 
         let pipeline = {
-            let (pipeline_ptr, context_ptr, profile_ptr, config_ptr) = self.into_raw_parts();
+            let (pipeline_ptr, context_ptr, profile_ptr) = self.into_raw_parts();
 
-            mem::drop(unsafe { pipeline_kind::Active::from_raw_parts(profile_ptr, config_ptr) });
+            mem::drop(unsafe { pipeline_kind::Active::from_raw_parts(profile_ptr) });
 
             Pipeline {
                 ptr: NonNull::new(pipeline_ptr).unwrap(),
@@ -315,14 +316,13 @@ impl ActivePipeline {
         *mut sys::rs2_pipeline,
         *mut sys::rs2_context,
         *mut sys::rs2_pipeline_profile,
-        Option<*mut sys::rs2_config>,
     ) {
         // take fields without invoking drop()
         let ptr = self.ptr;
         let context = unsafe { self.context.unsafe_clone().into_raw() };
-        let (pipeline_profile, config) = unsafe { self.state.unsafe_clone().into_raw_parts() };
+        let pipeline_profile = unsafe { self.state.unsafe_clone().into_raw_parts() };
         mem::forget(self);
-        (ptr.as_ptr(), context, pipeline_profile, config)
+        (ptr.as_ptr(), context, pipeline_profile)
     }
 
     /// Construct an active pipeline from raw pointers.
@@ -333,10 +333,9 @@ impl ActivePipeline {
         pipeline_ptr: *mut sys::rs2_pipeline,
         context_ptr: *mut sys::rs2_context,
         profile_ptr: *mut sys::rs2_pipeline_profile,
-        config_ptr: Option<*mut sys::rs2_config>,
     ) -> Self {
         let context = Context::from_raw(context_ptr);
-        let state = pipeline_kind::Active::from_raw_parts(profile_ptr, config_ptr);
+        let state = pipeline_kind::Active::from_raw_parts(profile_ptr);
         Self {
             ptr: NonNull::new(pipeline_ptr).unwrap(),
             context,

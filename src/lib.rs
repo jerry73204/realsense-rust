@@ -24,7 +24,7 @@
 //!     let config = Config::new()?
 //!         .enable_stream(StreamKind::Depth, 0, 640, 0, Format::Z16, 30)?
 //!         .enable_stream(StreamKind::Color, 0, 640, 0, Format::Rgb8, 30)?;
-//!     let mut pipeline = pipeline.start(config)?;
+//!     let mut pipeline = pipeline.start(&config)?;
 //!
 //!     let frames = pipeline.wait(None)?.unwrap();
 //!     let color_frame = frames.color_frame()?.unwrap();
