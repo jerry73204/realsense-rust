@@ -3,7 +3,10 @@
 use crate::{
     common::*,
     error::{ErrorChecker, Result},
-    sensor::{AnySensor, Sensor},
+    sensor::{
+        AnySensor, ColorSensor, DepthSensor, DepthStereoSensor, FishEyeSensor, L500DepthSensor,
+        MotionSensor, PoseSensor, Sensor, SoftwareSensor, Tm2Sensor,
+    },
 };
 
 /// An iterable list of sensors.
@@ -54,6 +57,96 @@ impl SensorList {
             fused: len == 0,
         };
         Ok(iter)
+    }
+
+    pub fn first_color_sensor(self) -> Result<Option<ColorSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.color();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_depth_sensor(self) -> Result<Option<DepthSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.depth();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_depth_stereo_sensor(self) -> Result<Option<DepthStereoSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.depth_stereo();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_fish_eye_sensor(self) -> Result<Option<FishEyeSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.fish_eye();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_l500_depth_sensor(self) -> Result<Option<L500DepthSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.l500_depth();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_motion_sensor(self) -> Result<Option<MotionSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.motion();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_pose_sensor(self) -> Result<Option<PoseSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.pose();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_software_sensor(self) -> Result<Option<SoftwareSensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.software();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
+    }
+
+    pub fn first_tm2_sensor(self) -> Result<Option<Tm2Sensor>> {
+        self.try_into_iter()?
+            .map(|result| -> Result<_> {
+                let sensor = result?.try_extend()?.tm2();
+                Ok(sensor)
+            })
+            .find_map(|result| result.transpose())
+            .transpose()
     }
 
     pub fn into_raw(self) -> *mut sys::rs2_sensor_list {

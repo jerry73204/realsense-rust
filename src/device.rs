@@ -4,6 +4,10 @@ use crate::{
     common::*,
     error::{ErrorChecker, Result},
     kind::CameraInfo,
+    sensor::{
+        ColorSensor, DepthSensor, DepthStereoSensor, FishEyeSensor, L500DepthSensor, MotionSensor,
+        PoseSensor, SoftwareSensor, Tm2Sensor,
+    },
     sensor_list::SensorList,
 };
 
@@ -32,6 +36,42 @@ impl Device {
             checker.check()?;
         }
         Ok(())
+    }
+
+    pub fn first_color_sensor(self) -> Result<Option<ColorSensor>> {
+        self.sensors()?.first_color_sensor()
+    }
+
+    pub fn first_depth_sensor(self) -> Result<Option<DepthSensor>> {
+        self.sensors()?.first_depth_sensor()
+    }
+
+    pub fn first_depth_stereo_sensor(self) -> Result<Option<DepthStereoSensor>> {
+        self.sensors()?.first_depth_stereo_sensor()
+    }
+
+    pub fn first_fish_eye_sensor(self) -> Result<Option<FishEyeSensor>> {
+        self.sensors()?.first_fish_eye_sensor()
+    }
+
+    pub fn first_l500_depth_sensor(self) -> Result<Option<L500DepthSensor>> {
+        self.sensors()?.first_l500_depth_sensor()
+    }
+
+    pub fn first_motion_sensor(self) -> Result<Option<MotionSensor>> {
+        self.sensors()?.first_motion_sensor()
+    }
+
+    pub fn first_pose_sensor(self) -> Result<Option<PoseSensor>> {
+        self.sensors()?.first_pose_sensor()
+    }
+
+    pub fn first_software_sensor(self) -> Result<Option<SoftwareSensor>> {
+        self.sensors()?.first_software_sensor()
+    }
+
+    pub fn first_tm2_sensor(self) -> Result<Option<Tm2Sensor>> {
+        self.sensors()?.first_tm2_sensor()
     }
 
     pub fn name(&self) -> Result<Option<&str>> {

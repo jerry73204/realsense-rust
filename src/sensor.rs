@@ -26,6 +26,78 @@ pub enum ExtendedSensor {
     Other(AnySensor),
 }
 
+impl ExtendedSensor {
+    pub fn color(self) -> Option<ColorSensor> {
+        match self {
+            Self::Color(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn depth(self) -> Option<DepthSensor> {
+        match self {
+            Self::Depth(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn depth_stereo(self) -> Option<DepthStereoSensor> {
+        match self {
+            Self::DepthStereo(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn l500_depth(self) -> Option<L500DepthSensor> {
+        match self {
+            Self::L500Depth(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn motion(self) -> Option<MotionSensor> {
+        match self {
+            Self::Motion(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn fish_eye(self) -> Option<FishEyeSensor> {
+        match self {
+            Self::FishEye(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn software(self) -> Option<SoftwareSensor> {
+        match self {
+            Self::Software(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn pose(self) -> Option<PoseSensor> {
+        match self {
+            Self::Pose(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn tm2(self) -> Option<Tm2Sensor> {
+        match self {
+            Self::Tm2(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+
+    pub fn other(self) -> Option<AnySensor> {
+        match self {
+            Self::Other(sensor) => Some(sensor),
+            _ => None,
+        }
+    }
+}
+
 /// Represents a sensor on device.
 #[derive(Debug)]
 pub struct Sensor<Kind>
