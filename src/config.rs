@@ -1,6 +1,7 @@
 //! Configuration type for [Pipeline](crate::pipeline::Pipeline).
 
 use crate::{
+    base::TryIntoCowCStr,
     common::*,
     error::{ErrorChecker, Result},
     kind::{Format, StreamKind},
@@ -55,33 +56,44 @@ impl Config {
         Ok(self)
     }
 
-    /// Enable device from a serial number.
-    pub fn enable_device_from_serial(self, serial: &CStr) -> Result<Self> {
+    /// Enable all device streams explicitly.
+    pub fn enable_all_streams(self) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = sys::rs2_config_enable_device(
-                self.ptr.as_ptr(),
-                serial.as_ptr(),
-                checker.inner_mut_ptr(),
-            );
+            let ptr = sys::rs2_config_enable_all_stream(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
             ptr
         };
         Ok(self)
     }
 
-    /// Enable device from a file path.
-    pub fn enable_device_from_file<P>(self, file: &CStr) -> Result<Self> {
+    /// Enable device from a serial number.
+    pub fn enable_device_from_serial<'a>(self, serial: impl TryIntoCowCStr<'a>) -> Result<Self> {
+        let serial = serial.try_into_cow_cstr()?;
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = sys::rs2_config_enable_device_from_file(
+            sys::rs2_config_enable_device(
+                self.ptr.as_ptr(),
+                serial.as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+        }
+        Ok(self)
+    }
+
+    /// Enable device from a file path.
+    pub fn enable_device_from_file<'a>(self, file: impl TryIntoCowCStr<'a>) -> Result<Self> {
+        let file = file.try_into_cow_cstr()?;
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            sys::rs2_config_enable_device_from_file(
                 self.ptr.as_ptr(),
                 file.as_ptr(),
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ptr
-        };
+        }
         Ok(self)
     }
 

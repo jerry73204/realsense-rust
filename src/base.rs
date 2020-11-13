@@ -1,11 +1,63 @@
 //! Common types and functions.
 
-use crate::common::*;
+use crate::{
+    common::*,
+    error::{Error, Result},
+};
 
 #[cfg(feature = "with-image")]
 pub use rs2_image::*;
 
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_millis(sys::RS2_DEFAULT_TIMEOUT as u64);
+
+/// Fallible conversion to `Cow<'a, CStr>`.
+///
+/// It is used for FFI interfaces that requires C string pointers.
+pub trait TryIntoCowCStr<'a> {
+    fn try_into_cow_cstr(self) -> Result<Cow<'a, CStr>>;
+}
+
+impl<'a> TryIntoCowCStr<'a> for CString {
+    fn try_into_cow_cstr(self) -> Result<Cow<'a, CStr>> {
+        Ok(self.into())
+    }
+}
+
+impl<'a> TryIntoCowCStr<'a> for &'a CStr {
+    fn try_into_cow_cstr(self) -> Result<Cow<'a, CStr>> {
+        Ok(self.into())
+    }
+}
+
+impl<'a> TryIntoCowCStr<'a> for String {
+    fn try_into_cow_cstr(self) -> Result<Cow<'a, CStr>> {
+        let bytes: Option<Vec<_>> = self
+            .into_bytes()
+            .into_iter()
+            .map(|byte| NonZeroU8::new(byte))
+            .collect();
+        let bytes = bytes.ok_or_else(|| {
+            Error::ToCStrConversion(
+                "cannot convert to CString: the string cannot contain null bytes",
+            )
+        })?;
+        let cstring = CString::from(bytes);
+        Ok(cstring.into())
+    }
+}
+
+impl<'a> TryIntoCowCStr<'a> for &str {
+    fn try_into_cow_cstr(self) -> Result<Cow<'a, CStr>> {
+        let bytes: Option<Vec<_>> = self.bytes().map(|byte| NonZeroU8::new(byte)).collect();
+        let bytes = bytes.ok_or_else(|| {
+            Error::ToCStrConversion(
+                "cannot convert to CString: the string cannot contain null bytes",
+            )
+        })?;
+        let cstring = CString::from(bytes);
+        Ok(cstring.into())
+    }
+}
 
 /// The intrinsic parameters for motion devices.
 pub struct MotionIntrinsics(pub sys::rs2_motion_device_intrinsic);

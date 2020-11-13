@@ -49,6 +49,7 @@ impl Drop for ErrorChecker {
 
 /// The error type wraps around underlying error thrown by librealsense library.
 pub enum Error {
+    ToCStrConversion(&'static str),
     Timeout(NonNull<sys::rs2_error>),
     UnsupportedOption(NonNull<sys::rs2_error>),
     Other(NonNull<sys::rs2_error>),
@@ -56,21 +57,27 @@ pub enum Error {
 
 impl Error {
     pub fn error_message(&self) -> &str {
-        get_error_message(self.ptr())
+        match (self, self.ptr()) {
+            (_, Some(ptr)) => get_error_message(ptr),
+            (Self::ToCStrConversion(reason), None) => reason,
+            _ => unreachable!(),
+        }
     }
 
-    pub fn into_raw(self) -> *mut sys::rs2_error {
-        let ptr = self.ptr().as_ptr();
+    pub fn into_raw(self) -> Option<*mut sys::rs2_error> {
+        let ptr = self.ptr()?.as_ptr();
         mem::forget(self);
-        ptr
+        Some(ptr)
     }
 
-    pub(crate) fn ptr(&self) -> NonNull<sys::rs2_error> {
-        match *self {
+    pub(crate) fn ptr(&self) -> Option<NonNull<sys::rs2_error>> {
+        let ptr = match *self {
+            Error::ToCStrConversion(_reason) => return None,
             Error::Timeout(ptr) => ptr,
             Error::UnsupportedOption(ptr) => ptr,
             Error::Other(ptr) => ptr,
-        }
+        };
+        Some(ptr)
     }
 }
 
@@ -96,9 +103,10 @@ unsafe impl Sync for Error {}
 
 impl Drop for Error {
     fn drop(&mut self) {
-        let ptr = self.ptr();
-        unsafe {
-            sys::rs2_free_error(ptr.as_ptr());
+        if let Some(ptr) = self.ptr() {
+            unsafe {
+                sys::rs2_free_error(ptr.as_ptr());
+            }
         }
     }
 }

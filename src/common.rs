@@ -18,7 +18,7 @@ pub use std::os::unix::ffi::OsStrExt;
 #[cfg(any(windows))]
 pub use std::os::windows::ffi::OsStrExt;
 pub use std::{
-    borrow::Borrow,
+    borrow::{Borrow, Cow},
     collections::HashMap,
     convert::{AsMut, AsRef},
     error::Error as StdError,
@@ -27,6 +27,7 @@ pub use std::{
     iter::FusedIterator,
     marker::PhantomData,
     mem::{self, MaybeUninit},
+    num::NonZeroU8,
     ops::{Deref, DerefMut},
     os::raw::{c_int, c_uchar, c_uint, c_void},
     path::Path,
