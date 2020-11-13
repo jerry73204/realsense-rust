@@ -9,7 +9,7 @@ use crate::{
 /// The extension trait extracts runtime configuration from implemented type.
 pub trait ToOptions {
     fn to_options(&self) -> Result<HashMap<Rs2Option, OptionHandle>> {
-        let options_ptr = self.get_options_ptr();
+        let options_ptr = self.options_ptr();
         unsafe {
             let list_ptr = {
                 let mut checker = ErrorChecker::new();
@@ -45,7 +45,7 @@ pub trait ToOptions {
         }
     }
 
-    fn get_options_ptr(&self) -> NonNull<sys::rs2_options>;
+    fn options_ptr(&self) -> NonNull<sys::rs2_options>;
 }
 
 /// A handle pointing to the option value.
@@ -56,7 +56,7 @@ pub struct OptionHandle {
 }
 
 impl OptionHandle {
-    pub fn get_value(&self) -> Result<f32> {
+    pub fn value(&self) -> Result<f32> {
         unsafe {
             let mut checker = ErrorChecker::new();
             let val = sys::rs2_get_option(

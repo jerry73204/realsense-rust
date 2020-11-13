@@ -14,16 +14,16 @@ use crate::{
 /// The enumeration of extended sensor type returned by [Sensor::try_extend](Sensor::try_extend).
 #[derive(Debug)]
 pub enum ExtendedSensor {
-    Color(Sensor<sensor_kind::Color>),
-    Depth(Sensor<sensor_kind::Depth>),
-    DepthStereo(Sensor<sensor_kind::DepthStereo>),
-    L500Depth(Sensor<sensor_kind::L500Depth>),
-    Motion(Sensor<sensor_kind::Motion>),
-    FishEye(Sensor<sensor_kind::FishEye>),
-    Software(Sensor<sensor_kind::Software>),
-    Pose(Sensor<sensor_kind::Pose>),
-    Tm2(Sensor<sensor_kind::Tm2>),
-    Other(Sensor<sensor_kind::Any>),
+    Color(ColorSensor),
+    Depth(DepthSensor),
+    DepthStereo(DepthStereoSensor),
+    L500Depth(L500DepthSensor),
+    Motion(MotionSensor),
+    FishEye(FishEyeSensor),
+    Software(SoftwareSensor),
+    Pose(PoseSensor),
+    Tm2(Tm2Sensor),
+    Other(AnySensor),
 }
 
 /// Represents a sensor on device.
@@ -314,7 +314,7 @@ impl<Kind> ToOptions for Sensor<Kind>
 where
     Kind: sensor_kind::SensorKind,
 {
-    fn get_options_ptr(&self) -> NonNull<sys::rs2_options> {
+    fn options_ptr(&self) -> NonNull<sys::rs2_options> {
         self.ptr.cast::<sys::rs2_options>()
     }
 }

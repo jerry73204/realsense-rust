@@ -573,7 +573,7 @@ impl<Kind> ToOptions for ProcessingBlock<Kind>
 where
     Kind: processing_block_kind::ProcessingBlockKind,
 {
-    fn get_options_ptr(&self) -> NonNull<sys::rs2_options> {
+    fn options_ptr(&self) -> NonNull<sys::rs2_options> {
         self.ptr.cast::<sys::rs2_options>()
     }
 }
