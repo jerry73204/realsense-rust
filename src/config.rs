@@ -5,6 +5,9 @@ use crate::{
     common::*,
     error::{ErrorChecker, Result},
     kind::{Format, StreamKind},
+    pipeline::Pipeline,
+    pipeline_kind::PipelineState,
+    pipeline_profile::PipelineProfile,
 };
 
 /// The pipeline configuration that will be consumed by [Pipeline::start()](crate::pipeline::Pipeline::start).
@@ -95,6 +98,24 @@ impl Config {
             checker.check()?;
         }
         Ok(self)
+    }
+
+    /// Enable all device streams explicitly.
+    pub fn resolve<S>(&self, pipeline: &Pipeline<S>) -> Result<PipelineProfile>
+    where
+        S: PipelineState,
+    {
+        let profile = unsafe {
+            let mut checker = ErrorChecker::new();
+            let ptr = sys::rs2_config_resolve(
+                self.ptr.as_ptr(),
+                pipeline.ptr.as_ptr(),
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+            PipelineProfile::from_raw(ptr)
+        };
+        Ok(profile)
     }
 
     pub fn into_raw(self) -> *mut sys::rs2_config {

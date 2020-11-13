@@ -17,7 +17,7 @@ pub struct Pipeline<State>
 where
     State: pipeline_kind::PipelineState,
 {
-    ptr: NonNull<sys::rs2_pipeline>,
+    pub(crate) ptr: NonNull<sys::rs2_pipeline>,
     context: Context,
     state: State,
 }

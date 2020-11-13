@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct PipelineProfile {
-    ptr: NonNull<sys::rs2_pipeline_profile>,
+    pub(crate) ptr: NonNull<sys::rs2_pipeline_profile>,
 }
 
 impl PipelineProfile {
