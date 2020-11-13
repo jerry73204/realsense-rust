@@ -43,7 +43,7 @@ impl Config {
     ) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = sys::rs2_config_enable_stream(
+            sys::rs2_config_enable_stream(
                 self.ptr.as_ptr(),
                 stream as sys::rs2_stream,
                 index as c_int,
@@ -54,7 +54,6 @@ impl Config {
                 checker.inner_mut_ptr(),
             );
             checker.check()?;
-            ptr
         };
         Ok(self)
     }
@@ -63,10 +62,9 @@ impl Config {
     pub fn enable_all_streams(self) -> Result<Self> {
         unsafe {
             let mut checker = ErrorChecker::new();
-            let ptr = sys::rs2_config_enable_all_stream(self.ptr.as_ptr(), checker.inner_mut_ptr());
+            sys::rs2_config_enable_all_stream(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
-            ptr
-        };
+        }
         Ok(self)
     }
 
@@ -95,6 +93,45 @@ impl Config {
                 file.as_ptr(),
                 checker.inner_mut_ptr(),
             );
+            checker.check()?;
+        }
+        Ok(self)
+    }
+
+    /// Disable data stream by stream index.
+    pub fn disable_index_stream(self, stream: StreamKind, index: usize) -> Result<Self> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            sys::rs2_config_disable_indexed_stream(
+                self.ptr.as_ptr(),
+                stream as sys::rs2_stream,
+                index as c_int,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+        }
+        Ok(self)
+    }
+
+    /// Disable data stream by stream kind.
+    pub fn disable_stream(self, stream: StreamKind) -> Result<Self> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            sys::rs2_config_disable_stream(
+                self.ptr.as_ptr(),
+                stream as sys::rs2_stream,
+                checker.inner_mut_ptr(),
+            );
+            checker.check()?;
+        }
+        Ok(self)
+    }
+
+    /// Disable all device streams explicitly.
+    pub fn disable_all_streams(self) -> Result<Self> {
+        unsafe {
+            let mut checker = ErrorChecker::new();
+            sys::rs2_config_disable_all_streams(self.ptr.as_ptr(), checker.inner_mut_ptr());
             checker.check()?;
         }
         Ok(self)
