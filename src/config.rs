@@ -129,10 +129,6 @@ impl Config {
             ptr: NonNull::new(ptr).unwrap(),
         }
     }
-
-    pub(crate) unsafe fn unsafe_clone(&self) -> Self {
-        Self { ptr: self.ptr }
-    }
 }
 
 impl Drop for Config {
