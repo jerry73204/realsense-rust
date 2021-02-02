@@ -14,9 +14,7 @@ repository = "https://github.com/jerry73204/realsense-rust"
 
 [build-dependencies]
 bindgen = { version = "0.54", optional = true }
-anyhow = "1.0"
 cc = { version = "1.0", features = ["parallel"] }
-lazy_static = "1.4"
 
 [target.'cfg(not(target_env = "msvc"))'.build-dependencies]
 pkg-config = { version = "0.3"  }

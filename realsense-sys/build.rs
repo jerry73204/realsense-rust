@@ -1,55 +1,42 @@
-use anyhow::Result;
-use lazy_static::lazy_static;
-use std::{
-    collections::HashSet,
-    fs::File,
-    io::{prelude::*, BufReader},
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 
-lazy_static! {
-    static ref CARGO_MANIFEST_DIR: PathBuf =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-}
-
-fn main() -> Result<()> {
+fn main() {
     if cfg!(feature = "doc-only") {
-        return Ok(());
+        return;
     }
 
+    let cargo_manifest_dir: PathBuf = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap());
+
     // Probe libary
-    let library = probe_library("realsense2")?;
+    let library = pkg_config::probe_library("realsense2")
+        .expect("pkg-config failed to find realsense2 package");
+    let major_version = library.version.find('.')
+        .map(|i| &library.version[..i])
+        .expect("failed to determine librealsense major version");
 
-    // Verify version
-    let (include_dir, version) = library
-        .include_paths
-        .iter()
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .filter_map(|path| {
-            let dir = Path::new(path).join("librealsense2");
-            if dir.is_dir() {
-                match get_version_from_header_dir(&dir) {
-                    Some(version) => Some((dir, version)),
-                    None => None,
-                }
-            } else {
-                None
-            }
-        })
-        .next()
-        .expect("fail to detect librealsense2 version");
-
-    assert_eq!(
-        &version.major,
-        "2",
-        "librealsense2 version {} is not supported",
-        version.to_string()
-    );
+    if major_version != "2" {
+        panic!("librealsense2 version {} is not supported, expected major version 2", library.version)
+    }
 
     // generate bindings
     #[cfg(feature = "buildtime-bindgen")]
     {
+        use std::path::Path;
+
+        let include_dir = library
+            .include_paths
+            .iter()
+            .filter_map(|path| {
+                let dir = Path::new(path).join("librealsense2");
+                if dir.is_dir() {
+                    Some(dir)
+                } else {
+                    None
+                }
+            })
+            .next()
+            .expect("fail find librealsense2 include directory");
+
         let bindings = bindgen::Builder::default()
             .clang_arg("-fno-inline-functions")
             .header(include_dir.join("rs.h").to_str().unwrap())
@@ -69,7 +56,7 @@ fn main() -> Result<()> {
             )
             .header(include_dir.join("h").join("rs_config.h").to_str().unwrap())
             .header(
-                CARGO_MANIFEST_DIR
+                cargo_manifest_dir
                     .join("c")
                     .join("rsutil_delegate.h")
                     .to_str()
@@ -83,10 +70,12 @@ fn main() -> Result<()> {
             .expect("Unable to generate bindings");
 
         // Write the bindings to file
-        let bindings_dir = CARGO_MANIFEST_DIR.join("bindings");
+        let bindings_dir = cargo_manifest_dir.join("bindings");
         let bindings_file = bindings_dir.join("bindings.rs");
 
-        std::fs::create_dir_all(&bindings_dir)?;
+        if let Err(e) = std::fs::create_dir_all(&bindings_dir) {
+            panic!("failed to create directory {}: {}", bindings_dir.display(), e);
+        }
         bindings
             .write_to_file(bindings_file)
             .expect("Couldn't write bindings!");
@@ -94,111 +83,15 @@ fn main() -> Result<()> {
 
     // compile and link rsutil_delegate.h statically
     cc::Build::new()
-        .include(&include_dir)
-        .include(CARGO_MANIFEST_DIR.join("c"))
-        .file(CARGO_MANIFEST_DIR.join("c").join("rsutil_delegate.c"))
+        .includes(&library.include_paths)
+        .file(cargo_manifest_dir.join("c/rsutil_delegate.c"))
         .compile("rsutil_delegate");
 
-    // link the librealsense2 shared library
-    println!("cargo:rustc-link-lib=realsense2");
-
-    Ok(())
-}
-
-fn get_version_from_header_dir<P>(dir: P) -> Option<Version>
-where
-    P: AsRef<Path>,
-{
-    let header_path = dir.as_ref().join("rs.h");
-
-    let mut major_opt: Option<String> = None;
-    let mut minor_opt: Option<String> = None;
-    let mut patch_opt: Option<String> = None;
-    let mut build_opt: Option<String> = None;
-
-    let mut reader = BufReader::new(File::open(header_path).ok()?);
-    loop {
-        let mut line = String::new();
-        match reader.read_line(&mut line) {
-            Ok(0) | Err(_) => return None,
-            _ => (),
-        }
-
-        const PREFIX: &str = "#define RS2_API_";
-        if line.starts_with(PREFIX) {
-            let mut tokens = line[PREFIX.len()..].split_whitespace();
-            let name_opt = tokens.next();
-            let version_opt = tokens.next();
-
-            if let (Some(name), Some(version)) = (name_opt, version_opt) {
-                let version_owned = version.to_owned();
-                match name {
-                    "MAJOR_VERSION" => major_opt = Some(version_owned),
-                    "MINOR_VERSION" => minor_opt = Some(version_owned),
-                    "PATCH_VERSION" => patch_opt = Some(version_owned),
-                    "BUILD_VERSION" => build_opt = Some(version_owned),
-                    _ => (),
-                }
-            }
-        }
-
-        if let (Some(major), Some(minor), Some(patch), Some(build)) =
-            (&major_opt, &minor_opt, &patch_opt, &build_opt)
-        {
-            let version = Version {
-                major: major.to_owned(),
-                minor: minor.to_owned(),
-                patch: patch.to_owned(),
-                build: build.to_owned(),
-            };
-            return Some(version);
-        }
+    // link the libraries specified by pkg-config.
+    for dir in &library.link_paths {
+        println!("cargo:rustc-link-search=native={}", dir.to_str().unwrap());
     }
-}
-
-fn probe_library(pkg_name: &str) -> Result<Library> {
-    let package = pkg_config::probe_library(pkg_name)?;
-    let lib = Library {
-        pkg_name: pkg_name.to_owned(),
-        libs: package.libs,
-        link_paths: package.link_paths,
-        framework_paths: package.framework_paths,
-        include_paths: package.include_paths,
-        version: package.version,
-        prefix: PathBuf::from(pkg_config::get_variable(pkg_name, "prefix")?),
-        libdir: PathBuf::from(pkg_config::get_variable(pkg_name, "libdir")?),
-    };
-    Ok(lib)
-}
-
-#[derive(Debug, Clone)]
-struct Version {
-    major: String,
-    minor: String,
-    patch: String,
-    build: String,
-}
-
-impl ToString for Version {
-    fn to_string(&self) -> String {
-        let Self {
-            major,
-            minor,
-            patch,
-            build,
-        } = self;
-        format!("{}.{}.{}.{}", major, minor, patch, build)
+    for lib in &library.libs {
+        println!("cargo:rustc-link-lib={}", lib);
     }
-}
-
-#[derive(Debug)]
-struct Library {
-    pub pkg_name: String,
-    pub libs: Vec<String>,
-    pub link_paths: Vec<PathBuf>,
-    pub framework_paths: Vec<PathBuf>,
-    pub include_paths: Vec<PathBuf>,
-    pub version: String,
-    pub prefix: PathBuf,
-    pub libdir: PathBuf,
 }
