@@ -1,3 +1,15 @@
+# (2021/02/27) RealSense-Rust is moved Tangram Vision's [Gitlab](https://gitlab.com/tangram-vision-oss/realsense-rust)
+
+RealSense-Rust is moved to Gitlab and now is maintained by Tangram Vision.
+The Tangram Vision has a full-time team to continue the development
+and take care of future issues. The project always keeps open source
+and allows community contributions. I believe the migration keeps
+the project alive and prosper.
+
+The project's new home:
+
+https://gitlab.com/tangram-vision-oss/realsense-rust
+
 # RealSense bindings for Rust
 
 The project provides high-level bindings to librealsense2 library as well as low-level FFI interface.
